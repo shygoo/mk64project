@@ -1,0 +1,111 @@
+
+802AA918 function called when starting a level
+a0 used for table @ 122390 in rom, 802B8D80 in ram
+each entry is 0x30 bytes
+
+0x00: 008284D0 0082B620   // mio0 file
+0x08: 0088FA10 0089B510   // mio0 file
+0x10: 0088CD70 // not sure
+0x14: 0088D070
+0x18: 0F000000
+0x1C: 0000167D
+0x20: 0F0096F4
+0x24: 00006930
+0x28: 09000000
+0x2C: 0000
+0x2E: 0000    // struct padding, unused
+
+___________________________ 
+
+800DC5A0 current level selection
+Changes when scrolling through the level selection menu
+when a level is loaded, this value is passed to 802AA918
+
+ Mushroom cup
+  Luigi raceway       0008
+  Moo Moo farm        0009
+  Koopa Troopa Beach  0006
+  Kalimari Desert     000B
+
+ Flower cup           
+  Toad's Turnpike     000A
+  Frappe Snowland     0005
+  Choco Mountain      0001
+  Mario Raceway       0000
+
+ Star cup             
+  Wario Stadium       000E
+  Sherbet Land        000C
+  Royal Raceway       0007
+  Bowser's Castle     0002
+
+ Special cup
+  DK's Jungle Parkway 0012
+  Yoshi Valley        0004
+  Banshee Boardwalk   0003
+  Rainbow Road        000D
+ 
+ Battles
+  Big Donut           0013
+  Block Fort          000F
+  Double Deck         0011
+  Skyscraper          0010
+ 
+
+Current character selection
+ 8018EDE4 [P1 P2 P3 P4]
+ None   00
+ Mario  01
+ Luigi  02
+ Peach  03
+ Toad   04
+ Yoshi  05
+ DK     06
+ Wario  07
+ Bowser 08
+ 
+ 8018EDE8 [P1 P2 P3 P4] Selection confirmations
+ 
+8018EDF3 Player-mode selection
+ 1P Game 01
+ 2P Game 02
+ 3P Game 03
+ 4P Game 04
+ 
+800DC53C Game-mode selection
+ Mario GP 00000000
+ T.Trials 00000001
+ VS       00000002
+ Battle   00000003
+ 
+___________________________
+
+800C4148 Play sound // wrapper functions: 800C8E10 menu sounds
+ 49018008 Rev up intro sound
+ 49009009 "Welcome to Mario Kart!"
+ 4900801A (start pressed at beginning of game)
+ 49008000 Selection scroll
+ 49008001 Option selected
+ 49008002 Option cancel
+ 4900900C "Versus"
+ 4900900E "Mario grand prix"
+ 4900900E "Select a level"
+ 2900800E Mario selected ("Let's-a go!")
+ 2900801E Luigi selected ("Yahoo!")
+ 2900806E Peach selected
+ 
+___________________________ 
+ 
+800EF868 Ascii text bank
+
+Printer functions:
+8009338C (a0 = x, a1 = y, a2 = pointer to asciiz string, a3 = controls text spacing) large
+80093788
+80093134
+
+Special ascii sequences:
+A3 F2 small "RD"
+A3 F3 small "ST"
+A3 EE small "ND"
+A3 F4 small "TH"
+ 
