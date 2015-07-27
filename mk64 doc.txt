@@ -92,7 +92,7 @@ Printer functions:
  80093134
 
 Special ascii sequences:
+ A3 EE small "ND"
  A3 F2 small "RD"
  A3 F3 small "ST"
- A3 EE small "ND"
  A3 F4 small "TH"

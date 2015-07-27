@@ -56,7 +56,6 @@ int main(int argc, char* argv[]){
 	mkdir(argv[2], 0700);
 	
 	for(int i = 0; i < 20; i++){
-		
 		void* mio0_block_a = rom + swap32(entries[i].mio0_a_start);
 		void* mio0_block_b = rom + swap32(entries[i].mio0_b_start);
 		
@@ -72,10 +71,9 @@ int main(int argc, char* argv[]){
 		writefile(output_filename_a, decoded_a, decoded_a_size);
 		writefile(output_filename_b, decoded_b, decoded_b_size);
 		
-		printf("Level %02d : %08X (%05X), %08X (%05X)\n", i, swap32(entries[i].mio0_a_start), decoded_a_size, swap32(entries[i].mio0_b_start), decoded_b_size);
+		printf("Level %02d %-16s %08X (%05X), %08X (%05X)\n", i, levelnames[i], swap32(entries[i].mio0_a_start), decoded_a_size, swap32(entries[i].mio0_b_start), decoded_b_size);
 		
 		free(decoded_a);
 		free(decoded_b);
 	}
-	//system("pause");
 }
