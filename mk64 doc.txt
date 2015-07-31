@@ -2,10 +2,9 @@
  A0 used as a level ID for a file table @ 122390 in rom, 802B8D80 in ram
  Each entry in the table is 0x30 bytes
  
- 0x00: 008284D0 0082B620 // mio0 block, primarily display lists
- 0x08: 0088FA10 0089B510 // mio0 block, no idea
- 0x10: 0088CD70 // likely a rom address, looks like a list of segmented addresses? (0x0F, 0x06)
- 0x14: 0088D070 // again^
+ 0x00: 008284D0 0082B620 // mio0 block, primarily display lists, segment 6
+ 0x08: 0088FA10 0089B510 // mio0 block, vertex data, segment 4
+ 0x10: 0088CD70 0088D070 // block of unknown
  0x18: 0F000000 // segment number?
  0x1C: 0000167D // ?
  0x20: 0F0096F4 // segmented address?
@@ -13,8 +12,17 @@
  0x28: 09000000 // another segment?
  0x2C: 0000     // ?
  0x2E: 0000     // struct padding, unused
-
-______________________________________________________  
+ 
+ unknown block structure:
+  0F001080 00000149 00000800 00000000 // 16 byte entries of this 
+  0F00422C 00000124 00000800 00000000
+  ...
+  00000000 00000000 00000000 00000000 // end of above list
+  ...
+  06000000 // seg 6 display list references
+  060001D0
+  ...
+______________________________________________________
 
 800DC5A0 Current level selection
  Changes when scrolling through the level selection menu
