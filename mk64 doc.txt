@@ -1,25 +1,55 @@
+8015A630
+801EDB40
+80269950
+
+80150258 RAM segments table
+ 00 General purpose, always 0x00000000
+ 01 ?
+ 02 ?
+ 03 ?
+ 04 Course vertex data
+ 05 Course textures
+ 06 Course display lists
+ 07 ?
+ 08 ?
+ 09 ?
+ 0A ?
+ 0B ?
+ 0C ?
+ 0D ?
+ 0F ?
+
+800400D0 mio0decode()
+800404C0 mio0encode()
+800405D0 tkmk00_decode 
+80099154 seg2virtual()
+802A7B94 assignsegment()
+
+
 802AA918 Function called when starting a level
  A0 used as a level ID for a file table @ 122390 in rom, 802B8D80 in ram
  Each entry in the table is 0x30 bytes
  
  0x00: 008284D0 0082B620 // mio0 block, primarily display lists, segment 6
  0x08: 0088FA10 0089B510 // mio0 block, vertex data, segment 4
- 0x10: 0088CD70 0088D070 // block of unknown
- 0x18: 0F000000 // segment number?
+ 0x10: 0088CD70 0088D070 // list of additional mio0 files, segment 6 dlist references
+ 0x18: 0F000000 // ?
  0x1C: 0000167D // ?
- 0x20: 0F0096F4 // segmented address?
+ 0x20: 0F0096F4 // ?
  0x24: 00006930 // ?
  0x28: 09000000 // another segment?
  0x2C: 0000     // ?
  0x2E: 0000     // struct padding, unused
  
- unknown block structure:
-  0F001080 00000149 00000800 00000000 // 16 byte entries of this 
-  0F00422C 00000124 00000800 00000000
+ Additional mio0 file reference list structure: // related function 802A85CC
+  0F001080 00000149 00000800 00000000
+  ^        ^        ^        ^
+  |        |        ????     ????
+  |        mio0 block size
+  Offset from 641F70 of an mio0 block
   ...
-  00000000 00000000 00000000 00000000 // end of above list
-  ...
-  06000000 // seg 6 display list references
+  00000000 00000000 00000000 00000000 // 16 byte null padding, end of mio0 reference list
+  06000000 // Segment 6 display list references
   060001D0
   ...
 ______________________________________________________
@@ -74,6 +104,21 @@ ______________________________________________________
  VS       00000002
  Battle   00000003
 
+______________________________________________________ 
+ 
+800EF868 / F0468 Ascii text bank
+
+Printer functions:
+ 8009338C (a0 = x, a1 = y, a2 = pointer to asciiz string, a3 = controls text spacing) large
+ 80093788
+ 80093134
+
+Special ascii sequences:
+ A3 EE small "ND"
+ A3 F2 small "RD"
+ A3 F3 small "ST"
+ A3 F4 small "TH"
+ 
 ______________________________________________________
 
 800C4148 Play sound // wrapper functions: 800C8E10 menu sounds
@@ -89,23 +134,7 @@ ______________________________________________________
  2900800E Mario selected ("Let's-a go!")
  2900801E Luigi selected ("Yahoo!")
  2900806E Peach selected
-
-______________________________________________________ 
  
-800EF868 Ascii text bank, not sure where it is in rom yet
-
-Printer functions:
- 8009338C (a0 = x, a1 = y, a2 = pointer to asciiz string, a3 = controls text spacing) large
- 80093788
- 80093134
-
-Special ascii sequences:
- A3 EE small "ND"
- A3 F2 small "RD"
- A3 F3 small "ST"
- A3 F4 small "TH"
- 
-______________________________________________________
 BC5F60 M64 table
 
 0003 // revision 3
@@ -143,3 +172,20 @@ BC5F60 M64 table
 ^        ^
 |        Size of m64 block
 Offset of M64 block relative to BC5F60
+
+______________________________________________________
+Objects/behavior related
+ 80166424 float Y coordinate of a thwomp, 801675A4 another one
+ 80040EE0 void thwomp_move(float* thwomp_y) moves a thwomp up and down
+ 8008B80C object x,y,z initialisation // callers: 80074C24, 80085484
+ 800DC59B float course timer
+ 801660A4 float Y coordinate of Luigi raceway hot air balloon
+ 
+ 80165C18 course object array
+ course_object { // 224 bytes each
+	...
+	float coord_x; // 0x28
+	float coord_y; // 0x2C
+	float coord_z; // 0x30
+	...
+ }
