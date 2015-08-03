@@ -3,29 +3,38 @@ by shygoo
 Aug 3 2015
 ______________________________________________________
 
-Address summary
+ROM/RAM map
      ROM    RAM      Description
-ASM  ?????? 800400D0 Function: MIO0 decoder 
-     ?????? 800404C0 Function: MIO0 encoder
-     ?????? 800405D0 Function: TKMK00 decoder
-     ?????? 80093134 Function: Print text
-     ?????? 8009338C Function: Print text
-     ?????? 80093788 Function: Print text
-     ?????? 80099124 Function: Segmented to virtual address converter
-     ?????? 80099154 Function: Segmented to virtual address converter (duplicate)
-     ?????? 800C4148 Function: Play sound
+CODE ?????? 800400D0 MIO0 decoder 
+     ?????? 800404C0 MIO0 encoder
+     ?????? 800405D0 TKMK00 decoder
+     ?????? 80093134 Print text
+     ?????? 8009338C Print text
+     ?????? 80093788 Print text
+     ?????? 80099124 Segmented to virtual address converter
+     ?????? 80099154 Segmented to virtual address converter (duplicate)
+     ?????? 800C4148 Play sound
 DATA ------ 800DC53C Game mode selection
      ------ 800DC598 Course timer (float)
      ------ 800DC5A0 Course selection
      0F0468 800EF868 Ascii text bank
      ------ 80150258 RAM Segments table
+	 ------ 80165C18 Course objects array? (bowser whomps, luigi hot air balloon)
      ------ 8018EDE4 Character selections
-     ------ 8018EDF3 Player count selection
-ASM  ?????? 802A7B94 Function: Segment base setter
-     ?????? 802AA918 Function: Load course GFX
-     122390 802B8D80 Course GFX data reference table
-     
+     ------ 8018EDF0 Player count selection
+CODE ?????? 802A7B94 Segment base setter
+     ?????? 802AA918 Course GFX data loader
+DATA 122390 802B8D80 Course GFX data reference table
+     12A1F0 ???????? Ascii text bank (credits)
+     132B50 -------- First MIO0 block
+     641F70 -------- An MIO0 bank (exclusively segment 05 course textures?)
+	 712DC0 -------- An MIO0 bank
+	 7FA3C0 -------- TKMK00 bank
+	 820FC0 -------- Last TKMK block in ROM
+	 821D00 -------- An MIO0 bank
+	 963EF0 -------- Last MIO0 block in ROM
      BC5F60 ???????? M64 music data
+	 BE9160 -------- End of ROM, 93856 padding bytes
 ______________________________________________________
 
 RAM segments table (80150258)
@@ -45,36 +54,31 @@ RAM segments table (80150258)
  0D ?
  0F ?
 
-Course GFX reference table (122390 / 802B8D80) // Only GFX?
+Course GFX data reference table (122390 / 802B8D80) // Only GFX?
  This table references course display lists, vertex data, and textures
  Each entry is 0x30 bytes:
  
- 0x00: 008284D0 0082B620 // MIO0 block primarily containing display lists, loaded into segment 6
- 0x08: 0088FA10 0089B510 // MIO0 block containing course vertex data, loaded into segment 4
- 0x10: 0088CD70 0088D070 // List of additional MIO0 block references, segment 6 display list references, all loaded into segment 5?
- 0x18: 0F000000 // segment
- 0x1C: 0000167D // ?
- 0x20: 0F0096F4 // ?
- 0x24: 00006930 // ?
- 0x28: 09000000 // another segment?
- 0x2C: 0000     // ?
- 0x2E: ----     // struct padding, unused
- 
-  Additional MIO0 block reference list structure: // related function 802A85CC
-   0F001080 00000149 00000800 00000000
-   ^        ^        ^        ^
-   |        |        |        +---------- ? Always 0
-   |        |        +------------------- Some flag? Always 00000800 or 00001000  
-   |        +---------------------------- MIO0 block size
-   +------------------------------------- Offset of an MIO0 block relative to 641F70 (the 0F prefix is ANDed out)
-   ...
-   00000000 00000000 00000000 00000000 // 16 byte null padding, end of MIO0 reference list
-   06000000 // Segment 6 display list references
-   060001D0
-   ...
+  0x00: 008284D0 0082B620 // MIO0 block primarily containing display lists, loaded into segment 06
+  0x08: 0088FA10 0089B510 // MIO0 block containing course vertex data, loaded into segment 04
++-0x10: 0088CD70 0088D070 // List of additional MIO0 block references (segment 5 textures?), segment 06 display list references
+| 0x18: 0F000000 // segment
+| 0x1C: 0000167D // ?
+| 0x20: 0F0096F4 // ?
+| 0x24: 00006930 // ?
+| 0x28: 09000000 // another segment?
+| 0x2C: 0000     // ?
+| 0x2E: ----     // struct padding, unused
+|  
++-> Additional MIO0 block reference list structure: // related function 802A85CC
+     0x00: 0F001080 // Offset of an MIO0 block relative to 641F70 (the 0F prefix is ANDed out)
+     0x04: 00000149 // MIO0 block size
+     0x08: 00000800 // Some flag? Always 00000800 or 00001000  
+     0x0C: 00000000 // ? Always 0
+    
+     At the end of the MIO0 block reference list there is 16 bytes of null padding followed by a list of segmented addresses referencing display lists in segment 06
 
  802AA918 Function called to load a course's gfx assets
-  A0 is passed as a course ID which is used as an index for the course gfx reference table
+  A0 is passed as a course ID which is used as an index for the course gfx data reference table
   800DC5A0 Current course selection ID:
    Mario Raceway       0000
    Choco Mountain      0001
@@ -98,7 +102,7 @@ Course GFX reference table (122390 / 802B8D80) // Only GFX?
    Big Donut           0013
 ______________________________________________________
 
-Current character selection (8018EDE4 [P1 P2 P3 P4])
+Current character selection (8018EDE4 [P1 P2 P3 P4]) (8018EDE8 [P1 P2 P3 P4] confirmations)
  None     00
  Mario    01
  Luigi    02
@@ -108,10 +112,8 @@ Current character selection (8018EDE4 [P1 P2 P3 P4])
  DK       06
  Wario    07
  Bowser   08
- 
- 8018EDE8 [P1 P2 P3 P4] Selection confirmations
 
-Player count selection (8018EDF3)
+Player count selection (8018EDF0)
  1P Game  01
  2P Game  02
  3P Game  03
@@ -194,11 +196,11 @@ BC5F60 M64 table
 
 ______________________________________________________
 Objects/behavior related
- 80166424 float Y coordinate of a thwomp, 801675A4 another one
  80040EE0 void thwomp_move(float* thwomp_y) moves a thwomp up and down
  8008B80C object x,y,z initialisation // callers: 80074C24, 80085484
  800DC59B float course timer
  801660A4 float Y coordinate of Luigi raceway hot air balloon
+ 80166424 float Y coordinate of a thwomp, 801675A4 another one
  
  80165C18 course object array
  course_object { // 224 bytes each
@@ -209,14 +211,14 @@ Objects/behavior related
 	...
  }
 ______________________________________________________
- Other notes
-  TKMK00 blocks seem to only contain image data for the background on startup, and startup selection screens
-  Map of TKMK00 blocks: http://pastebin.com/raw.php?i=NnGnYfSu
-  Map of MIO0 blocks:   http://pastebin.com/raw.php?i=SSnykJa9
-  
- Todo
-  course collision data and references
-  course m64 references
-  course cpu-player path data and references
-  course object placement
+Other notes
+ TKMK00 blocks seem to only contain image data for the background on startup, and startup selection screens
+ Map of TKMK00 blocks: http://pastebin.com/raw.php?i=NnGnYfSu
+ Map of MIO0 blocks:   http://pastebin.com/raw.php?i=SSnykJa9
+
+Todo
+ course collision data and references
+ course m64 references
+ course cpu-player path data and references
+ course object placement
   
