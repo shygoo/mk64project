@@ -28,13 +28,13 @@ DATA 122390 802B8D80 Course GFX data reference table
      12A1F0 ???????? Ascii text bank (credits)
      132B50 -------- First MIO0 block
      641F70 -------- An MIO0 bank (exclusively segment 05 course textures?)
-	 712DC0 -------- An MIO0 bank
-	 7FA3C0 -------- TKMK00 bank
-	 820FC0 -------- Last TKMK block in ROM
-	 821D00 -------- An MIO0 bank
-	 963EF0 -------- Last MIO0 block in ROM
+     712DC0 -------- An MIO0 bank
+     7FA3C0 -------- TKMK00 bank
+     820FC0 -------- Last TKMK block in ROM
+     821D00 -------- An MIO0 bank
+     963EF0 -------- Last MIO0 block in ROM
      BC5F60 ???????? M64 music data
-	 BE9160 -------- End of ROM, 93856 padding bytes
+     BE9160 -------- End of ROM, 93856 padding bytes
 ______________________________________________________
 
 RAM segments table (80150258)
