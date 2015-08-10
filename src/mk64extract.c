@@ -57,8 +57,8 @@ int main(int argc, char* argv[]){
 	char* output_directory = argv[2];
 	
 	char* rom = loadfile(rom_path, &romsize);
-	LevelEntry*  entries  = &rom[0x122390];
-	M64Entry*  m64entries = &rom[0xBC5F64];
+	LevelEntry* entries  = &rom[0x122390];
+	M64Entry* m64entries = &rom[0xBC5F64];
 	u16 m64count = getU16BE(rom, 0xBC5F62);
 	
 	char output_filename_f3d[60];
@@ -67,7 +67,7 @@ int main(int argc, char* argv[]){
 	
 	mkdir(output_directory, 0700);
 	
-	// dump course graphics:
+	// dump data referenced by course table:
 	
 	for(int i = 0; i < 20; i++){
 		void* mio0_block_f3d  = &rom[SWAP32(entries[i].mio0_f3d_start)];
@@ -113,10 +113,25 @@ int main(int argc, char* argv[]){
 	
 	// dump m64 data:
 	
-	char output_filename_m64[60];
+	char output_filename[60];
 	for(int i = 0; i < m64count; i++){
-		sprintf(output_filename_m64, "%s\\TUNE%02d.m64", output_directory, i);
-		printf("%s\n", output_filename_m64, SWAP32(m64entries[i].offset));
-		writefile(output_filename_m64, &rom[0xBC5F60] + SWAP32(m64entries[i].offset), SWAP32(m64entries[i].size));
+		sprintf(output_filename, "%s\\TUNE%02d.m64", output_directory, i);
+		printf("%s\n", output_filename, SWAP32(m64entries[i].offset));
+		writefile(output_filename, &rom[0xBC5F60] + SWAP32(m64entries[i].offset), SWAP32(m64entries[i].size));
+	}
+	
+	// full mio0 dump:
+	printf("Full MIO0 dump...\n");
+	sprintf(output_filename, "%s\\mio0", output_directory);
+	mkdir(output_filename);
+	u32 MIO0_MAGIC_LE = 0x304F494D; // 4D494F30
+	for(u32 i = 0; i < romsize; i += 4){
+		if(*(u32*)(rom + i) == MIO0_MAGIC_LE){
+			sprintf(output_filename, "%s\\mio0\\%08X.bin", output_directory, i);
+			u32 decoded_size;
+			void* decoded_data = mio0decode(rom + i, &decoded_size);
+			writefile(output_filename, decoded_data, decoded_size);
+			free(decoded_data);
+		}
 	}
 }
