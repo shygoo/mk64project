@@ -14,8 +14,11 @@
 	</head>
 	<body>
 		<div><input type="file" id="meshfile"></div>
+		
 		<script src="three.min.js"></script>
-
+		<script src="Projector.js"></script>
+		<script src="CanvasRenderer.js"></script>
+		
 		<script>
 			// mesh file loader:
 			var meshdata;
@@ -42,7 +45,7 @@
 
 			function init() {
 
-				renderer = new THREE.WebGLRenderer();
+				renderer = new THREE.CanvasRenderer();
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				document.body.appendChild( renderer.domElement );
