@@ -70,9 +70,9 @@ int main(int argc, char* argv[]){
 	// dump course graphics:
 	
 	for(int i = 0; i < 20; i++){
-		void* mio0_block_f3d  = &rom[SWAP32(entries[i].mio0_f3d_start];
-		void* mio0_block_mesh = &rom[SWAP32(entries[i].mio0_mesh_start];
-		void* block_unk       = &rom[SWAP32(entries[i].unk_start];
+		void* mio0_block_f3d  = &rom[SWAP32(entries[i].mio0_f3d_start)];
+		void* mio0_block_mesh = &rom[SWAP32(entries[i].mio0_mesh_start)];
+		void* block_unk       = &rom[SWAP32(entries[i].unk_start)];
 		
 		u32 decoded_f3d_size;
 		u32 decoded_mesh_size;
