@@ -87,7 +87,7 @@ Course data reference table (122390 / 802B8D80)
  This table references course display lists, vertex data, and textures
  Each entry is 0x30 bytes:
  
-+---0x00: 008284D0 0082B620 // MIO0 block containing display lists, and item box placements, and ??; loaded into segment 06
++---0x00: 008284D0 0082B620 // MIO0 block containing display lists, item box placements, path data, and ??; loaded into segment 06
 |+--0x08: 0088FA10 0089B510 // MIO0 block containing course vertex data (gfx & collisions); loaded into segment 04
 ||+-0x10: 0088CD70 0088D070 // List of additional MIO0 block references (segment 5 textures?) segment 06 display list references
 ||| 0x18: 0F000000 // segment
@@ -115,8 +115,7 @@ Course data reference table (122390 / 802B8D80)
 |      0x0A: ?
 |      0x0C: ?
 |
-+---> Offsets for segment 6 item box positions are hardcoded
-
++---> Offsets for segment 6 assets are hardcoded
 
  802AA918 Function called to load a course's assets
   A0 is passed as a course ID which is used as an index for the course data reference table
@@ -279,5 +278,4 @@ Other notes
  
 Todo
  course m64 references
- course cpu-player path data and references
  course object placement
