@@ -6,7 +6,7 @@ ______________________________________________________
 ROM/RAM map
      ROM    RAM      Description
 CODE ?????? 800067C4 Set places (1st, 2nd, etc)
-
+     ?????? 800115F4 Process path data on course load
      ?????? 8002F35C Controls cpu movement along track while player is moving
      ?????? 800400D0 MIO0 decoder
      ?????? 800404C0 MIO0 encoder
@@ -26,11 +26,12 @@ DATA ------ 800DC53C Game mode selection
      ------ 80165C18 Course RAM objects array? (bowser whomps, luigi hot air balloon)
      ------ 8018EDE4 Character selections
      ------ 8018EDF0 Player count selection
-CODE ?????? 8029D830 Place all item boxes using segment 06 offset
+CODE ?????? 8029D584 Does something with segment 06 offset (list similar to item box placements)
+     ?????? 8029D830 Place all item boxes using segment 06 offset
      ?????? 802A7B94 Segment base setter
      ?????? 802A85CC MIO0 '0F' list related
-     ?????? 802AA918 Course GFX data main loader 
-DATA 122390 802B8D80 Course GFX data reference table
+     ?????? 802AA918 Course data main loader 
+DATA 122390 802B8D80 Course data reference table
      12A1F0 ???????? Ascii text bank (credits)
      132B50 -------- First MIO0 block
      641F70 -------- An MIO0 bank (exclusively segment 05 course textures?)
@@ -50,7 +51,7 @@ RAM segments table (80150258)
  03 Common textures? (billboard tree images, ??)
  04 Course vertex data
  05 Course textures
- 06 Course display lists, item box placements
+ 06 Course display lists, item box placements, path data
  07 ?
  08 ?
  09 ?
@@ -61,6 +62,28 @@ RAM segments table (80150258)
  0F ?
 
 Course data reference table (122390 / 802B8D80)
+
+ [008284D0 0082B620] [0088FA10 0089B510] [0088CD70 0088D070] 0F000000 0000167D 0F0096F4 00006930 09000000 00000000
+ [0082B620 0082DF40] [0089B510 008A7640] [0088D070 0088D340] 0F000000 000015B8 0F00A0B4 00005AE8 09000000 00010000
+ [0082DF40 00831DC0] [008A7640 008B9630] [0088D340 0088D6C0] 0F000000 00002537 0F00E368 00009918 09000000 00000000
+ [00831DC0 00835BA0] [008B9630 008C2510] [0088D6C0 0088D9C0] 0F000000 00001351 0F0068E8 00007340 09000000 00010000
+ [00835BA0 0083F740] [008C2510 008CC900] [0088D9C0 0088DAB0] 0F000000 00000E88 0F007D90 00008158 09000000 00000000
+ [0083F740 00842E40] [008CC900 008D8E50] [0088DAB0 0088DB40] 0F000000 00001599 0F009D24 00006648 09000000 00000000
+ [00842E40 0084ABD0] [008D8E50 008EC390] [0088DB40 0088DC50] 0F000000 000024A0 0F00FD78 0000B2B8 09000000 00000000
+ [0084ABD0 0084E8E0] [008EC390 008FE640] [0088DC50 0088E120] 0F000000 00002072 0F00EC60 0000B128 09000000 00000000
+ [0084E8E0 00852E20] [008FE640 0090B3E0] [0088E120 0088E590] 0F000000 00001730 0F009800 0000C738 09000000 00000000
+ [00852E20 00857E80] [0090B3E0 0091B980] [0088E590 0088E8D0] 0F000000 00001F24 0F00DAEC 00006738 09000000 00000000
+ [00857E80 008666A0] [0091B980 00928C70] [0088E8D0 0088ECD0] 0F000000 000018D7 0F00A5D0 00006B10 09000000 00000000
+ [008666A0 0086ECF0] [00928C70 00936FD0] [0088ECD0 0088EFB0] 0F000000 000018F9 0F00B394 0000A678 09000000 00000000
+ [0086ECF0 00872A00] [00936FD0 0093CC60] [0088EFB0 0088F2A0] 0F000000 00000A76 0F0049F8 00003850 09000000 00000000
+ [00872A00 008804A0] [0093CC60 009438C0] [0088F2A0 0088F300] 0F000000 00000C27 0F005A5C 00002100 09000000 00000000
+ [008804A0 00885630] [009438C0 00951780] [0088F300 0088F600] 0F000000 000017B3 0F00A9CC 0000A4B8 09000000 00000000
+ [00885630 00885780] [00951780 00953890] [0088F600 0088F680] 0F000000 00000440 0F0018D8 000015D0 09000000 00000000
+ [00885780 008858A0] [00953890 00955620] [0088F680 0088F800] 0F000000 0000043E 0F001678 00001118 09000000 00000000
+ [008858A0 00885A10] [00955620 00956670] [0088F800 0088F830] 0F000000 0000022B 0F000CD4 00000748 09000000 00000000
+ [00885A10 0088CC50] [00956670 00963EF0] [0088F830 0088F9C0] 0F000000 0000162F 0F00A45C 00009C20 09000000 00000000
+ [0088CC50 0088CD70] [00963EF0 00966260] [0088F9C0 0088FA10] 0F000000 0000048D 0F001B84 00001078 09000000 00000000
+
  This table references course display lists, vertex data, and textures
  Each entry is 0x30 bytes:
  
@@ -75,7 +98,7 @@ Course data reference table (122390 / 802B8D80)
 ||| 0x2C: 0000     // ?
 ||| 0x2E: ----     // struct padding, unused
 |||  
-||+-> Reference structure: // related function 802A85CC
+||+-> Reference structure (16 bytes each): // related function 802A85CC
 ||     0x00: 0F001080 // Offset of an MIO0 block relative to 641F70 (the '0F' prefix is ANDed out)
 ||     0x04: 00000149 // MIO0 block size
 ||     0x08: 00000800 // Some flag? Always 00000800 or 00001000  
@@ -83,16 +106,16 @@ Course data reference table (122390 / 802B8D80)
 || 
 ||     At the end of the MIO0 block reference list there are 16 bytes of null padding followed by a list of segmented addresses referencing display lists in segment 06
 ||
-|+--> Mesh entry structure:
+|+--> Mesh entry structure (14 bytes each):
 |      0x00: s16 Vx
-|	   0x02: s16 Vy
-|	   0x04: s16 Vz
+|      0x02: s16 Vy
+|      0x04: s16 Vz
 |      0x06: ?
-|	   0x08: ?
-|	   0x0A: ?
-|	   0x0C: ?
+|      0x08: ?
+|      0x0A: ?
+|      0x0C: ?
 |
-+---> Offsets for item box positions here are hardcoded
++---> Offsets for segment 6 item box positions are hardcoded
 
 
  802AA918 Function called to load a course's assets
@@ -221,13 +244,13 @@ Objects/behavior related
  
  course item box array 80160218
  item_box {
-    ...
-	float shadow_coord_y; // 0x08
-	...
-	float coord_x; // 0x1C
-	float coord_y; // 0x20
-	float coord_z; // 0x24 
-	...
+  ...
+  float shadow_coord_y; // 0x08
+  ...
+  float coord_x; // 0x1C
+  float coord_y; // 0x20
+  float coord_z; // 0x24 
+  ...
  }
  
  
