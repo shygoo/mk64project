@@ -1,11 +1,14 @@
 MK64 (U) hacking doc
 by shygoo
-Aug 3 2015
+Aug 10 2015
 ______________________________________________________
 
 ROM/RAM map
      ROM    RAM      Description
-CODE ?????? 800400D0 MIO0 decoder 
+CODE ?????? 800067C4 Set places (1st, 2nd, etc)
+
+     ?????? 8002F35C Controls cpu movement along track while player is moving
+     ?????? 800400D0 MIO0 decoder
      ?????? 800404C0 MIO0 encoder
      ?????? 800405D0 TKMK00 decoder
      ?????? 80093134 Print text
@@ -17,12 +20,14 @@ CODE ?????? 800400D0 MIO0 decoder
 DATA ------ 800DC53C Game mode selection
      ------ 800DC598 Course timer (float)
      ------ 800DC5A0 Course selection
+     0E3AD0 800E2ED0 Kart unique settings table, 40 bytes per entry
      0F0468 800EF868 Ascii text bank
      ------ 80150258 RAM Segments table
      ------ 80165C18 Course RAM objects array? (bowser whomps, luigi hot air balloon)
      ------ 8018EDE4 Character selections
      ------ 8018EDF0 Player count selection
-CODE ?????? 802A7B94 Segment base setter
+CODE ?????? 8029D830 Place all item boxes using segment 06 offset
+     ?????? 802A7B94 Segment base setter
      ?????? 802A85CC MIO0 '0F' list related
      ?????? 802AA918 Course GFX data main loader 
 DATA 122390 802B8D80 Course GFX data reference table
@@ -45,7 +50,7 @@ RAM segments table (80150258)
  03 Common textures? (billboard tree images, ??)
  04 Course vertex data
  05 Course textures
- 06 Course display lists
+ 06 Course display lists, item box placements
  07 ?
  08 ?
  09 ?
@@ -55,31 +60,43 @@ RAM segments table (80150258)
  0D ?
  0F ?
 
-Course GFX data reference table (122390 / 802B8D80) // Only GFX?
+Course data reference table (122390 / 802B8D80)
  This table references course display lists, vertex data, and textures
  Each entry is 0x30 bytes:
  
-  0x00: 008284D0 0082B620 // MIO0 block primarily containing display lists, loaded into segment 06
-  0x08: 0088FA10 0089B510 // MIO0 block containing course vertex data, loaded into segment 04
-+-0x10: 0088CD70 0088D070 // List of additional MIO0 block references (segment 5 textures?), segment 06 display list references
-| 0x18: 0F000000 // segment
-| 0x1C: 0000167D // ?
-| 0x20: 0F0096F4 // ?
-| 0x24: 00006930 // ?
-| 0x28: 09000000 // another segment?
-| 0x2C: 0000     // ?
-| 0x2E: ----     // struct padding, unused
-|  
-+-> Reference structure: // related function 802A85CC
-     0x00: 0F001080 // Offset of an MIO0 block relative to 641F70 (the '0F' prefix is ANDed out)
-     0x04: 00000149 // MIO0 block size
-     0x08: 00000800 // Some flag? Always 00000800 or 00001000  
-     0x0C: 00000000 // ? Always 0
- 
-     At the end of the MIO0 block reference list there are 16 bytes of null padding followed by a list of segmented addresses referencing display lists in segment 06
++---0x00: 008284D0 0082B620 // MIO0 block containing display lists, and item box placements, and ??; loaded into segment 06
+|+--0x08: 0088FA10 0089B510 // MIO0 block containing course vertex data (gfx & collisions); loaded into segment 04
+||+-0x10: 0088CD70 0088D070 // List of additional MIO0 block references (segment 5 textures?) segment 06 display list references
+||| 0x18: 0F000000 // segment
+||| 0x1C: 0000167D // ?
+||| 0x20: 0F0096F4 // ?
+||| 0x24: 00006930 // ?
+||| 0x28: 09000000 // another segment?
+||| 0x2C: 0000     // ?
+||| 0x2E: ----     // struct padding, unused
+|||  
+||+-> Reference structure: // related function 802A85CC
+||     0x00: 0F001080 // Offset of an MIO0 block relative to 641F70 (the '0F' prefix is ANDed out)
+||     0x04: 00000149 // MIO0 block size
+||     0x08: 00000800 // Some flag? Always 00000800 or 00001000  
+||     0x0C: 00000000 // ? Always 0
+|| 
+||     At the end of the MIO0 block reference list there are 16 bytes of null padding followed by a list of segmented addresses referencing display lists in segment 06
+||
+|+--> Mesh entry structure:
+|      0x00: s16 Vx
+|	   0x02: s16 Vy
+|	   0x04: s16 Vz
+|      0x06: ?
+|	   0x08: ?
+|	   0x0A: ?
+|	   0x0C: ?
+|
++---> Offsets for item box positions here are hardcoded
 
- 802AA918 Function called to load a course's gfx assets
-  A0 is passed as a course ID which is used as an index for the course gfx data reference table
+
+ 802AA918 Function called to load a course's assets
+  A0 is passed as a course ID which is used as an index for the course data reference table
   800DC5A0 Current course selection ID:
    Mario Raceway       0000
    Choco Mountain      0001
@@ -201,6 +218,19 @@ Objects/behavior related
  801660A4 float Y coordinate of Luigi raceway hot air balloon
  80166424 float Y coordinate of a thwomp, 801675A4 another one
  
+ 
+ course item box array 80160218
+ item_box {
+    ...
+	float shadow_coord_y; // 0x08
+	...
+	float coord_x; // 0x1C
+	float coord_y; // 0x20
+	float coord_z; // 0x24 
+	...
+ }
+ 
+ 
  80165C18 course object array
  course_object { // 224 bytes each
   ...
@@ -209,15 +239,22 @@ Objects/behavior related
   float coord_z; // 0x30
   ...
  }
+ 
+ 
 ______________________________________________________
 Other notes
  TKMK00 blocks seem to only contain image data for the background on startup, and startup selection screens
  Map of TKMK00 blocks: http://pastebin.com/raw.php?i=NnGnYfSu
  Map of MIO0 blocks:   http://pastebin.com/raw.php?i=SSnykJa9
+ 
+ 800F69A4 P1 X float
+ 800F69A8 P1 Y float
+ 800F69AC P1 Z float
+ 800F69be P1 rotation s16
 
+ 800BC360 m64 related code
+ 
 Todo
- course collision data and references
  course m64 references
  course cpu-player path data and references
  course object placement
-  
