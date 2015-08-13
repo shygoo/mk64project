@@ -251,11 +251,12 @@ Other notes
 
  800BC360 m64 related code
  
-Todo/to find:
- All hardcoded segment 6 pointers
+Todo:
+ Collect all hardcoded segment 6 pointers
  Draft "course script" engine to replace the hardcoded stuff
- Course m64 references
- Course object placement method
- How segment 5 is filled (course textures)
- How segment 7 f3d is generated
- What 8029D584 does
+ Find course m64 references
+ Find course object placement method
+ Find what 0x18:0x2C in course data table are for
+ Find how segment 5 is filled (course textures)
+ Find how segment 7 f3d is generated
+ Find what 8029D584 function does
