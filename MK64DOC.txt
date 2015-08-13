@@ -1,6 +1,6 @@
 MK64 (U) hacking doc
 by shygoo
-Aug 10 2015
+Aug 13 2015
 ______________________________________________________
 
 ROM/RAM map
@@ -49,10 +49,10 @@ RAM segments table (80150258)
  01 ?
  02 ?
  03 Common textures? (billboard tree images, ??)
- 04 Course vertex data
+ 04 Course mesh, for both collisions and graphics
  05 Course textures
- 06 Course display lists, item box placements, path data
- 07 ?
+ 06 Some display lists, item box placements, path data
+ 07 Generated (?) display lists which reference the course mesh data
  08 ?
  09 ?
  0A ?
@@ -209,13 +209,13 @@ BC5F60 M64 table
  +----------------- Offset of M64 block relative to BC5F60
 
 ______________________________________________________
+
 Objects/behavior related
  80040EE0 void thwomp_move(float* thwomp_y) moves a thwomp up and down
  8008B80C object x,y,z initialisation // callers: 80074C24, 80085484
  800DC59B float course timer
  801660A4 float Y coordinate of Luigi raceway hot air balloon
  80166424 float Y coordinate of a thwomp, 801675A4 another one
- 
  
  course item box array 80160218
  item_box {
@@ -224,7 +224,7 @@ Objects/behavior related
   ...
   float coord_x; // 0x1C
   float coord_y; // 0x20
-  float coord_z; // 0x24 
+  float coord_z; // 0x24
   ...
  }
  
@@ -237,7 +237,6 @@ Objects/behavior related
   float coord_z; // 0x30
   ...
  }
- 
  
 ______________________________________________________
 Other notes
@@ -252,6 +251,11 @@ Other notes
 
  800BC360 m64 related code
  
-Todo
- course m64 references
- course object placement
+Todo/to find:
+ All hardcoded segment 6 pointers
+ Draft "course script" engine to replace the hardcoded stuff
+ Course m64 references
+ Course object placement method
+ How segment 5 is filled (course textures)
+ How segment 7 f3d is generated
+ What 8029D584 does
