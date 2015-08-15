@@ -1,6 +1,6 @@
 MK64 (U) hacking doc
 by shygoo
-Aug 13 2015
+Aug 15 2015
 ______________________________________________________
 
 ROM/RAM map
@@ -32,6 +32,7 @@ CODE ?????? 8029D584 Does something with segment 06 offset (list similar to item
      ?????? 802A85CC MIO0 '0F' list related
      ?????? 802AA918 Course data main loader 
 DATA 122390 802B8D80 Course data reference table
+     ?????? 802B9C94 Jump table for segment 7 display list unpacking?
      12A1F0 ???????? Ascii text bank (credits)
      132B50 -------- First MIO0 block
      641F70 -------- An MIO0 bank (exclusively segment 05 course textures?)
@@ -59,7 +60,7 @@ RAM segments table (80150258)
  0B ?
  0C ?
  0D ?
- 0F ?
+ 0F Course collisions table
 
 Course data reference table (122390 / 802B8D80)
  This table references course display lists, vertex data, textures, object placements; each entry is 0x30 bytes:
@@ -114,6 +115,8 @@ Course data reference table (122390 / 802B8D80)
 |      0x0C: ?
 |
 +---> Offsets for segment 6 assets are hardcoded
+
+0x1C gets multiplied by 24?
 
  802AA918 Function called to load a course's assets using the course data table
   800DC5A0 holds the current course selection ID, which is passed to this function
