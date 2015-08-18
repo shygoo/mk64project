@@ -2,7 +2,7 @@
 <!-- very crappy mesh viewer built off of three.js's cube example -->
 <html lang="en">
 	<head>
-		<title>three.js webgl - geometry - cube</title>
+		<title>Course viewer</title>
 		<meta charset="utf-8">
 		<style>
 			body {
@@ -26,50 +26,47 @@
 			course path (seg 06)<br>
 			<select id="path-offset">
 				<option>060057B0 Mario raceway</option>
-				<option>060057B0 Mario raceway</option>
 			</select><input type="file" id="pathfile">
 		</div>
 		<script src="three.min.js"></script>
 
 		<script>
+			function BinInput(fileElement, callback){
+				if(typeof(fileElement) == "string"){
+					fileElement = document.getElementById(fileElement);
+				}
+				var reader = new FileReader();
+				reader.onloadend = function(){
+					callback(this.result);
+				}
+				fileElement.onchange = function(){
+					reader.readAsArrayBuffer(this.files[0]);
+				}
+				this.fileElement = fileElement;
+				this.callback    = callback;
+			}
 			// mesh file loader:
 			var meshdata;
-			var meshfileInput = document.getElementById("meshfile");
-			var meshReader = new FileReader();
-			meshReader.onloadend = function(){
-				meshdata = new Int16Array(this.result);
+			
+			BinInput("meshfile", function(result){
+				meshdata = new Int16Array(result);
 				for(var i = 0; i < meshdata.length; i++){
 					meshdata[i] = ((meshdata[i] & 0xFF00) >> 8) | ((meshdata[i] & 0x00FF) << 8);
 				}
 				courseMesh();
-				//init();
-				//animate();
-			}
-			meshfileInput.onchange = function(){
-				meshReader.readAsArrayBuffer(meshfileInput.files[0]);
-			}
+			});
 			
-			
-			var pathfileInput = document.getElementById("pathfile");
-			var pathReader = new FileReader();
-			pathReader.onloadend = function(){
-				meshdata = new Int16Array(this.result);
+			BinInput("pathfile", function(result){
+				meshdata = new Int16Array(result);
 				for(var i = 0; i < meshdata.length; i++){
 					meshdata[i] = ((meshdata[i] & 0xFF00) >> 8) | ((meshdata[i] & 0x00FF) << 8);
 				}
 				coursePath();
-				//init();
-				//animate();
-			}
-			pathfileInput.onchange = function(){
-				pathReader.readAsArrayBuffer(pathfileInput.files[0]);
-			}
-		
+			});
+
 			// threejs:
 			var camera, scene, renderer;
 			var meshes = [];
-
-
 
 			function init() {
 				renderer = new THREE.WebGLRenderer();
@@ -77,7 +74,7 @@
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				document.body.appendChild( renderer.domElement );
 
-				camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 6000 );
+				camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 6000);
 				camera.position.z = 4000;
 				camera.position.x = -1000;
 
@@ -107,39 +104,125 @@
 				mesh = new THREE.Mesh( geometry, material );
 
 				mesh.scale = {x: 0.01, y: 0.01, z: 0.01};
-				scene.add( mesh );
+				scene.add(mesh);
 				meshes.push(mesh);
 				mesh.rotation.x = Math.PI/4;
-				//mesh.rotation.y = -Math.PI/6
 				mesh.position.x = -1500;
+			}
+			
+			function ItemBoxMesh(){
+				var vpos = [
+					[0, 0, 0],
+					[1, 0, 0],
+					[1, 0, 1],
+					[0, 0, 0],
+					[0, 0, 1],
+					[1, 0, 1],
+
+				];
+				var verts = new Float32Array(vpos.length * 3);
+				for(var i = 0; i < vpos.length; i++){
+					verts[i*3 + 0] = vpos[i][0];
+					verts[i*3 + 1] = vpos[i][1];
+					verts[i*3 + 2] = vpos[i][2];
+				}
+				var geometry = new THREE.BufferGeometry();
+				geometry.addAttribute('position', new THREE.BufferAttribute(verts, 3));
+				var col = 0xFF0000;
+				var material = new THREE.MeshBasicMaterial( { color: col, wireframe: true} );
+				var mesh = new THREE.Mesh(geometry, material);
+				mesh.scale = {x: 0.01, y: 0.01, z: 0.01};
+				return mesh;
 			}
 			
 			function coursePath(){
 				var geometry = new THREE.BufferGeometry();
 				
 				var vertexPositions = [];
-				for(var i = 0x57B0/2; i < 0x57B0/2 + 1991; i += 4){
+				for(var i = 0x57B0/2; i < 0x57B0/2 + 0xF98/2; i += 4){ // detailed path
 					vertexPositions.push([meshdata[i+0], meshdata[i+1], meshdata[i+2]]);
 				}
 				
-				var vertices = new Float32Array( vertexPositions.length * 3 * 3)
+				var vertices = new Float32Array( vertexPositions.length * 3)
 				
 				for(var i = 0; i < vertexPositions.length; i++){
-					vertices[i*9 + 0] = vertexPositions[i][0];
-					vertices[i*9 + 1] = vertexPositions[i][1];
-					vertices[i*9 + 2] = vertexPositions[i][2];
-					
-					vertices[i*9 + 3] = vertexPositions[i][0];
-					vertices[i*9 + 4] = vertexPositions[i][1] + 30;
-					vertices[i*9 + 5] = vertexPositions[i][2];
-					
-					vertices[i*9 + 6] = vertexPositions[i][0];
-					vertices[i*9 + 7] = vertexPositions[i][1];
-					vertices[i*9 + 8] = vertexPositions[i][2];
+					vertices[i*3 + 0] = vertexPositions[i][0];
+					vertices[i*3 + 1] = vertexPositions[i][1];
+					vertices[i*3 + 2] = vertexPositions[i][2];
 				}
 
 				geometry.addAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
 				var col = 0x00FF00;
+				var material = new THREE.MeshBasicMaterial( { color: col, wireframe: true} );
+				mesh = new THREE.Mesh( geometry, material );
+
+				mesh.scale = {x: 0.01, y: 0.01, z: 0.01};
+				scene.add(mesh);
+				meshes.push(mesh);
+				mesh.rotation.x = Math.PI/4;
+				//mesh.rotation.y = -Math.PI/6
+				mesh.position.x = -1500;
+				
+				
+				geometry = new THREE.BufferGeometry();
+				
+				vertexPositions = [];
+				for(var i = 0x5568/2; i < 0x5568/2 + 0x248/2; i += 4){// simple path
+					vertexPositions.push([meshdata[i+0], meshdata[i+1], meshdata[i+2]]);
+				}
+				
+				var vertices = new Float32Array( vertexPositions.length * 3)
+				
+				for(var i = 0; i < vertexPositions.length; i++){
+					vertices[i*3 + 0] = vertexPositions[i][0];
+					vertices[i*3 + 1] = vertexPositions[i][1];
+					vertices[i*3 + 2] = vertexPositions[i][2];
+				}
+
+				geometry.addAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
+				col = 0xFFFF00;
+				material = new THREE.MeshBasicMaterial( { color: col, wireframe: true} );
+				mesh = new THREE.Mesh( geometry, material );
+
+				mesh.scale = {x: 0.01, y: 0.01, z: 0.01};
+				scene.add(mesh);
+				meshes.push(mesh);
+				mesh.rotation.x = Math.PI/4;
+				//mesh.rotation.y = -Math.PI/6
+				mesh.position.x = -1500;
+				
+				for(var i = 0x9570/2; i < 0x9648/2; i+=4){
+					console.log(meshdata[i + 0])
+					var box = new ItemBoxMesh();
+					scene.add(box);
+					meshes.push(box);
+					box.position.x = -1500// + meshdata[i + 0];
+					//box.position.y = meshdata[i + 1];
+					//box.position.z = meshdata[i + 2];
+				}
+			}
+			
+			var vertexPositions = [];
+			
+			/*
+			function coursePath2(){
+				var geometry = new THREE.BufferGeometry();
+				
+				var vertexPositions = [];
+				for(var i = 0x5568/2; i < 0x5568/2 + 0x248/2; i += 4){
+					vertexPositions.push([meshdata[i+0], meshdata[i+1], meshdata[i+2]]);
+				}
+				
+				var vertices = new Float32Array( vertexPositions.length * 3)
+				
+				for(var i = 0; i < vertexPositions.length; i++){
+					vertices[i*3 + 0] = vertexPositions[i][0];
+					vertices[i*3 + 1] = vertexPositions[i][1];
+					vertices[i*3 + 2] = vertexPositions[i][2];
+				}
+
+				geometry.addAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
+				var col = 0xFFFF00;
 				var material = new THREE.MeshBasicMaterial( { color: col, wireframe: true} );
 				mesh = new THREE.Mesh( geometry, material );
 
@@ -149,7 +232,7 @@
 				mesh.rotation.x = Math.PI/4;
 				//mesh.rotation.y = -Math.PI/6
 				mesh.position.x = -1500;
-			}
+			}*/
 			
 			var KEY_DOWN  = 40;
 			var KEY_UP    = 38;
@@ -182,10 +265,11 @@
 					case isPressed(KEY_DOWN): camera.position.y--; break;
 				}
 				for(var i in meshes){
-					meshes[i].rotation.x -= 0.0005;
+					//meshes[i].rotation.x -= 0.0005;
 				}
 				renderer.render( scene, camera );
 			}
+						
 			init();
 			animate();
 		</script>
