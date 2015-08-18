@@ -18,6 +18,7 @@
 		</style>
 	</head>
 	<body>
+		<div style="position:absolute;">
 		<div style="display:inline-block;border:1px solid #444;padding:3px;">
 			course mesh (seg 04)<br>
 			<input type="file" id="meshfile">
@@ -27,6 +28,7 @@
 			<select id="path-offset">
 				<option>060057B0 Mario raceway</option>
 			</select><input type="file" id="pathfile">
+		</div>
 		</div>
 		<script src="three.min.js"></script>
 
@@ -197,42 +199,12 @@
 					scene.add(box);
 					meshes.push(box);
 					box.position.x = -1500// + meshdata[i + 0];
-					//box.position.y = meshdata[i + 1];
-					//box.position.z = meshdata[i + 2];
+					box.position.y = meshdata[i + 1];
+					box.position.z = meshdata[i + 2];
 				}
 			}
 			
 			var vertexPositions = [];
-			
-			/*
-			function coursePath2(){
-				var geometry = new THREE.BufferGeometry();
-				
-				var vertexPositions = [];
-				for(var i = 0x5568/2; i < 0x5568/2 + 0x248/2; i += 4){
-					vertexPositions.push([meshdata[i+0], meshdata[i+1], meshdata[i+2]]);
-				}
-				
-				var vertices = new Float32Array( vertexPositions.length * 3)
-				
-				for(var i = 0; i < vertexPositions.length; i++){
-					vertices[i*3 + 0] = vertexPositions[i][0];
-					vertices[i*3 + 1] = vertexPositions[i][1];
-					vertices[i*3 + 2] = vertexPositions[i][2];
-				}
-
-				geometry.addAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
-				var col = 0xFFFF00;
-				var material = new THREE.MeshBasicMaterial( { color: col, wireframe: true} );
-				mesh = new THREE.Mesh( geometry, material );
-
-				mesh.scale = {x: 0.01, y: 0.01, z: 0.01};
-				scene.add( mesh );
-				meshes.push(mesh);
-				mesh.rotation.x = Math.PI/4;
-				//mesh.rotation.y = -Math.PI/6
-				mesh.position.x = -1500;
-			}*/
 			
 			var KEY_DOWN  = 40;
 			var KEY_UP    = 38;
@@ -255,14 +227,14 @@
 				camera.aspect = window.innerWidth / window.innerHeight;
 				camera.updateProjectionMatrix();
 
-				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.setSize( window.innerWidth, window.innerHeight - 5 );
 
 			}
 			function animate() {
 				requestAnimationFrame( animate );
 				switch(true){
-					case isPressed(KEY_UP):   camera.position.y++; break;
-					case isPressed(KEY_DOWN): camera.position.y--; break;
+					case isPressed(KEY_UP):   camera.position.y += 5; break;
+					case isPressed(KEY_DOWN): camera.position.y -= 5; break;
 				}
 				for(var i in meshes){
 					//meshes[i].rotation.x -= 0.0005;
