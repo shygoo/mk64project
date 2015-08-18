@@ -1,0 +1,13 @@
+800C4148 Play sound // wrapper functions: 800C8E10 menu sounds
+ 49018008 Rev up intro sound
+ 49009009 "Welcome to Mario Kart!"
+ 4900801A Start pressed at beginning of game
+ 49008000 Selection scroll
+ 49008001 Option selected
+ 49008002 Option cancel
+ 4900900C "Versus"
+ 4900900E "Mario grand prix"
+ 4900900E "Select a level"
+ 2900800E Mario selected ("Let's-a go!")
+ 2900801E Luigi selected ("Yahoo!")
+ 2900806E Peach selected
