@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<!-- very crappy mesh viewer built off of three.js's cube example -->
+<html lang="en">
+	<head>
+		<title>three.js webgl - geometry - cube</title>
+		<meta charset="utf-8">
+		<style>
+			body {
+				margin: 0px;
+				background-color: #000000;
+				overflow: hidden;
+				color: #fff;
+				font: 10px tahoma;
+			}
+			input, select, option {
+				font: 10px tahoma;
+			}
+		</style>
+	</head>
+	<body>
+		<div style="display:inline-block;border:1px solid #444;padding:3px;">
+			course mesh (seg 04)<br>
+			<input type="file" id="meshfile">
+		</div>
+		<div style="display:inline-block;border:1px solid #444;padding:3px;">
+			course path (seg 06)<br>
+			<select id="path-offset">
+				<option>060057B0 Mario raceway</option>
+				<option>060057B0 Mario raceway</option>
+			</select><input type="file" id="pathfile">
+		</div>
+		<script src="three.min.js"></script>
+
+		<script>
+			// mesh file loader:
+			var meshdata;
+			var meshfileInput = document.getElementById("meshfile");
+			var meshReader = new FileReader();
+			meshReader.onloadend = function(){
+				meshdata = new Int16Array(this.result);
+				for(var i = 0; i < meshdata.length; i++){
+					meshdata[i] = ((meshdata[i] & 0xFF00) >> 8) | ((meshdata[i] & 0x00FF) << 8);
+				}
+				courseMesh();
+				//init();
+				//animate();
+			}
+			meshfileInput.onchange = function(){
+				meshReader.readAsArrayBuffer(meshfileInput.files[0]);
+			}
+			
+			
+			var pathfileInput = document.getElementById("pathfile");
+			var pathReader = new FileReader();
+			pathReader.onloadend = function(){
+				meshdata = new Int16Array(this.result);
+				for(var i = 0; i < meshdata.length; i++){
+					meshdata[i] = ((meshdata[i] & 0xFF00) >> 8) | ((meshdata[i] & 0x00FF) << 8);
+				}
+				coursePath();
+				//init();
+				//animate();
+			}
+			pathfileInput.onchange = function(){
+				pathReader.readAsArrayBuffer(pathfileInput.files[0]);
+			}
+		
+			// threejs:
+			var camera, scene, renderer;
+			var meshes = [];
+
+
+
+			function init() {
+				renderer = new THREE.WebGLRenderer();
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				document.body.appendChild( renderer.domElement );
+
+				camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 6000 );
+				camera.position.z = 4000;
+				camera.position.x = -1000;
+
+				scene = new THREE.Scene();
+
+				window.addEventListener( 'resize', onWindowResize, false );
+			}
+			
+			function courseMesh(){
+				var geometry = new THREE.BufferGeometry();
+				var vertexPositions = [];
+				for(var i = 0; i < meshdata.length; i += 7){
+					vertexPositions.push([meshdata[i+0], meshdata[i+1], meshdata[i+2]]);
+				}
+				
+				var vertices = new Float32Array(vertexPositions.length * 3);
+				
+				for (var i = 0; i < vertexPositions.length; i++){
+					vertices[i*3 + 0] = vertexPositions[i][0];
+					vertices[i*3 + 1] = vertexPositions[i][1];
+					vertices[i*3 + 2] = vertexPositions[i][2];
+				}
+
+				geometry.addAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
+				var col = 0x666666;
+				var material = new THREE.MeshBasicMaterial( { color: col, wireframe: true} );
+				mesh = new THREE.Mesh( geometry, material );
+
+				mesh.scale = {x: 0.01, y: 0.01, z: 0.01};
+				scene.add( mesh );
+				meshes.push(mesh);
+				mesh.rotation.x = Math.PI/4;
+				//mesh.rotation.y = -Math.PI/6
+				mesh.position.x = -1500;
+			}
+			
+			function coursePath(){
+				var geometry = new THREE.BufferGeometry();
+				
+				var vertexPositions = [];
+				for(var i = 0x57B0/2; i < 0x57B0/2 + 1991; i += 4){
+					vertexPositions.push([meshdata[i+0], meshdata[i+1], meshdata[i+2]]);
+				}
+				
+				var vertices = new Float32Array( vertexPositions.length * 3 * 3)
+				
+				for(var i = 0; i < vertexPositions.length; i++){
+					vertices[i*9 + 0] = vertexPositions[i][0];
+					vertices[i*9 + 1] = vertexPositions[i][1];
+					vertices[i*9 + 2] = vertexPositions[i][2];
+					
+					vertices[i*9 + 3] = vertexPositions[i][0];
+					vertices[i*9 + 4] = vertexPositions[i][1] + 30;
+					vertices[i*9 + 5] = vertexPositions[i][2];
+					
+					vertices[i*9 + 6] = vertexPositions[i][0];
+					vertices[i*9 + 7] = vertexPositions[i][1];
+					vertices[i*9 + 8] = vertexPositions[i][2];
+				}
+
+				geometry.addAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
+				var col = 0x00FF00;
+				var material = new THREE.MeshBasicMaterial( { color: col, wireframe: true} );
+				mesh = new THREE.Mesh( geometry, material );
+
+				mesh.scale = {x: 0.01, y: 0.01, z: 0.01};
+				scene.add( mesh );
+				meshes.push(mesh);
+				mesh.rotation.x = Math.PI/4;
+				//mesh.rotation.y = -Math.PI/6
+				mesh.position.x = -1500;
+			}
+			
+			var KEY_DOWN  = 40;
+			var KEY_UP    = 38;
+			var KEY_LEFT  = 37;
+			var KEY_RIGHT = 39;
+			
+			var keysdown = [];
+			
+			document.body.onkeydown = function(e){
+				keysdown[e.keyCode] = true;
+			}
+			document.body.onkeyup = function(e){
+				delete keysdown[e.keyCode];
+			}
+			function isPressed(keyCode){
+				return keyCode in keysdown;
+			}
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+			function animate() {
+				requestAnimationFrame( animate );
+				switch(true){
+					case isPressed(KEY_UP):   camera.position.y++; break;
+					case isPressed(KEY_DOWN): camera.position.y--; break;
+				}
+				for(var i in meshes){
+					meshes[i].rotation.x -= 0.0005;
+				}
+				renderer.render( scene, camera );
+			}
+			init();
+			animate();
+		</script>
+	</body>
+</html>

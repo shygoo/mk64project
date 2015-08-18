@@ -30,11 +30,11 @@ CODE ?????? 8029D584 Does something with segment 06 offset (list similar to item
      ?????? 8029D830 Place all item boxes using segment 06 offset
      ?????? 802A7B94 Segment base setter
      ?????? 802A85CC MIO0 '0F' list related
-	 ?????? 802A9AF4 Display list unpacker (A0 = segmented address of packed dlist, A1 = length)
+     ?????? 802A9AF4 Display list unpacker (A0 = segmented address of packed dlist, A1 = length)
      ?????? 802AA918 Course data main loader 
 DATA 122390 802B8D80 Course data reference table
      1232A4 802B9C94 Jump table for segment 7 display list unpacking?
-	 ?????? 802BA274 Index for packed dlist commands
+     ?????? 802BA274 Index for packed dlist commands
      12A1F0 ???????? Ascii text bank (credits)
      132B50 -------- First MIO0 block
      641F70 -------- An MIO0 bank (exclusively segment 05 course textures?)
@@ -247,6 +247,7 @@ Other notes
 Todo:
  Collect all hardcoded segment 06 pointers
  Draft "course script" engine to replace the hardcoded stuff
+ Add parameter to course table for optional raw display list
  Find course m64 references
  Find course object placement method
  Find what 0x18:0x2C in course data table are for

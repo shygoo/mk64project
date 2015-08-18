@@ -4,3 +4,7 @@ MK64.z64
 MK64.sav
 MK64.mpk
 m64notes.txt
+src/_test.bat
+src/mio0encode.h
+src/mio0test.c
+src/mio0test.exe
