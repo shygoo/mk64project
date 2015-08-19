@@ -49,7 +49,7 @@
 			}
 			// mesh file loader:
 			var meshdata;
-			
+			var MESHSCALE = 2;
 			BinInput("meshfile", function(result){
 				meshdata = new Int16Array(result);
 				for(var i = 0; i < meshdata.length; i++){
@@ -77,7 +77,7 @@
 				document.body.appendChild( renderer.domElement );
 
 				camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 6000);
-				camera.position.z = 4000;
+				camera.position.z = 2000;
 				camera.position.x = -1000;
 
 				scene = new THREE.Scene();
@@ -105,35 +105,40 @@
 				var material = new THREE.MeshBasicMaterial( { color: col, wireframe: true} );
 				mesh = new THREE.Mesh( geometry, material );
 
-				mesh.scale = {x: 0.01, y: 0.01, z: 0.01};
+				mesh.scale = {x: MESHSCALE, y: MESHSCALE, z: MESHSCALE};
 				scene.add(mesh);
 				meshes.push(mesh);
-				mesh.rotation.x = Math.PI/4;
+				//mesh.rotation.x = Math.PI/4;
 				mesh.position.x = -1500;
 			}
 			
 			function ItemBoxMesh(){
-				var vpos = [
-					[0, 0, 0],
-					[1, 0, 0],
-					[1, 0, 1],
-					[0, 0, 0],
-					[0, 0, 1],
-					[1, 0, 1],
-
-				];
-				var verts = new Float32Array(vpos.length * 3);
-				for(var i = 0; i < vpos.length; i++){
-					verts[i*3 + 0] = vpos[i][0];
-					verts[i*3 + 1] = vpos[i][1];
-					verts[i*3 + 2] = vpos[i][2];
-				}
-				var geometry = new THREE.BufferGeometry();
-				geometry.addAttribute('position', new THREE.BufferAttribute(verts, 3));
+				var geometry = new THREE.BoxGeometry(10, 10, 10); //new THREE.BufferGeometry();
+				//geometry.addAttribute('position', new THREE.BufferAttribute(verts, 3));
 				var col = 0xFF0000;
 				var material = new THREE.MeshBasicMaterial( { color: col, wireframe: true} );
 				var mesh = new THREE.Mesh(geometry, material);
-				mesh.scale = {x: 0.01, y: 0.01, z: 0.01};
+				mesh.scale = {x: MESHSCALE, y: MESHSCALE, z: MESHSCALE};
+				return mesh;
+			}
+			
+			function UnkMesh(){
+				var geometry = new THREE.BoxGeometry(10, 10, 10); //new THREE.BufferGeometry();
+				//geometry.addAttribute('position', new THREE.BufferAttribute(verts, 3));
+				var col = 0xFF00FF;
+				var material = new THREE.MeshBasicMaterial( { color: col, wireframe: true} );
+				var mesh = new THREE.Mesh(geometry, material);
+				mesh.scale = {x: MESHSCALE, y: MESHSCALE, z: MESHSCALE};
+				return mesh;
+			}
+			
+			function UnkMesh2(){
+				var geometry = new THREE.BoxGeometry(10, 40, 10); //new THREE.BufferGeometry();
+				//geometry.addAttribute('position', new THREE.BufferAttribute(verts, 3));
+				var col = 0xAAFF00;
+				var material = new THREE.MeshBasicMaterial( { color: col, wireframe: true} );
+				var mesh = new THREE.Mesh(geometry, material);
+				mesh.scale = {x: MESHSCALE, y: MESHSCALE, z: MESHSCALE};
 				return mesh;
 			}
 			
@@ -158,10 +163,10 @@
 				var material = new THREE.MeshBasicMaterial( { color: col, wireframe: true} );
 				mesh = new THREE.Mesh( geometry, material );
 
-				mesh.scale = {x: 0.01, y: 0.01, z: 0.01};
+				mesh.scale = {x: MESHSCALE, y: MESHSCALE, z: MESHSCALE};
 				scene.add(mesh);
 				meshes.push(mesh);
-				mesh.rotation.x = Math.PI/4;
+				//mesh.rotation.x = Math.PI/4;
 				//mesh.rotation.y = -Math.PI/6
 				mesh.position.x = -1500;
 				
@@ -186,19 +191,39 @@
 				material = new THREE.MeshBasicMaterial( { color: col, wireframe: true} );
 				mesh = new THREE.Mesh( geometry, material );
 
-				mesh.scale = {x: 0.01, y: 0.01, z: 0.01};
+				mesh.scale = {x: MESHSCALE, y: MESHSCALE, z: MESHSCALE};
 				scene.add(mesh);
 				meshes.push(mesh);
-				mesh.rotation.x = Math.PI/4;
+				//mesh.rotation.x = Math.PI/4;
 				//mesh.rotation.y = -Math.PI/6
 				mesh.position.x = -1500;
 				
-				for(var i = 0x9570/2; i < 0x9648/2; i+=4){
+				for(var i = 0x9498/2; i < 0x9510/2; i+=4){
 					console.log(meshdata[i + 0])
 					var box = new ItemBoxMesh();
 					scene.add(box);
 					meshes.push(box);
-					box.position.x = -1500// + meshdata[i + 0];
+					box.position.x = -1500 + meshdata[i + 0];
+					box.position.y = meshdata[i + 1];
+					box.position.z = meshdata[i + 2];
+				}
+				
+				for(var i = 0x9518/2; i < 0x9568/2; i+= 4){
+					console.log(meshdata[i + 0])
+					var box = new UnkMesh();
+					scene.add(box);
+					meshes.push(box);
+					box.position.x = -1500 + meshdata[i + 0];
+					box.position.y = meshdata[i + 1];
+					box.position.z = meshdata[i + 2];
+				}
+				
+				for(var i = 0x9570/2; i < 0x9648/2; i+= 4){
+					console.log(meshdata[i + 0])
+					var box = new UnkMesh2();
+					scene.add(box);
+					meshes.push(box);
+					box.position.x = -1500 + meshdata[i + 0];
 					box.position.y = meshdata[i + 1];
 					box.position.z = meshdata[i + 2];
 				}
@@ -230,6 +255,7 @@
 				renderer.setSize( window.innerWidth, window.innerHeight - 5 );
 
 			}
+			var phase = 0;
 			function animate() {
 				requestAnimationFrame( animate );
 				switch(true){
@@ -239,9 +265,18 @@
 				for(var i in meshes){
 					//meshes[i].rotation.x -= 0.0005;
 				}
+				if(scene.rotation.x > 1){
+					phase = 1;
+				} else if(scene.rotation.x < 0){
+					phase = 0;
+				}
+				if(phase){
+					scene.rotation.x -= 0.001;
+				} else {
+					scene.rotation.x += 0.001;
+				}
 				renderer.render( scene, camera );
 			}
-						
 			init();
 			animate();
 		</script>
