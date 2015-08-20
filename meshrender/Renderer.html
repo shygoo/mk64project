@@ -14,6 +14,9 @@
 			input, select, option {
 				font: 10px tahoma;
 			}
+			.object_entry:hover { 
+				background-color: #440;
+			}
 		</style>
 	</head>
 	<body>
@@ -24,15 +27,23 @@
 			</div>
 			<div style="display:inline-block;border:1px solid #444;padding:3px;">
 				course path (seg 06)<br>
-				<select id="path-offset">
-					<option>060057B0 Mario raceway</option>
+				offsets
+				<select id="course-preset" title="Hardcoded settings">
+					<option data-path-u="0x5568" data-path="0x57B0" data-items="0x9498" data-plants="0x9518" data-trees="0x9570">Mario raceway</option>
 				</select>
 				<input type="file" id="pathfile">
 			</div>
 		</div>
-		<center id="container" style="padding:10px;"></center>
+		<center style="padding:10px;">
+			<div style="display: inline-block; text-align:left;">
+				<div id="controls">
+					[Pan] [Rotate]
+				</div>
+				<div id="container" style="display:inline-block;"></div>
+				<div id="objects" style="display:inline-block; vertical-align: top; overflow:auto; height: 300px; width: 150px; background-color: #000; border:1px solid #444; padding:4px;"></div>
+			</div>
+		</center>
 		<script src="three.min.js"></script>
-
 		<script>
 			function BinInput(fileElement, callback){
 				if(typeof(fileElement) == "string"){
@@ -48,76 +59,106 @@
 				this.fileElement = fileElement;
 				this.callback    = callback;
 			}
-			
+			function SWAP16(s){
+				return ((s & 0xFF00) >> 8) | ((s & 0xFF) << 8);
+			}
 			// file loaders:
 			var s16data; // s16 array of last loaded file
 			BinInput("meshfile", function(result){
-				s16data = new Int16Array(result);
-				for(var i = 0; i < s16data.length; i++){
-					s16data[i] = ((s16data[i] & 0xFF00) >> 8) | ((s16data[i] & 0x00FF) << 8);
-				}
+				s16data = (new Int16Array(result)).map(function(s){return SWAP16(s);}); // parse big endian s16 array
 				drawCourseGeometry();
 			});
 			BinInput("pathfile", function(result){
-				s16data = new Int16Array(result);
-				for(var i = 0; i < s16data.length; i++){
-					s16data[i] = ((s16data[i] & 0xFF00) >> 8) | ((s16data[i] & 0x00FF) << 8);
-				}
+				s16data = (new Int16Array(result)).map(function(s){return SWAP16(s);}); // parse big endian s16 array
 				drawSeg06();
 			});
 
 			// Mesh classes:
 			function ItemBoxMesh(){
-				var geometry = new THREE.BoxGeometry(10, 10, 10);
-				var col = 0xFF0000;
-				var material = new THREE.MeshBasicMaterial({color: col, wireframe: true});
-				var mesh = new THREE.Mesh(geometry, material);
-				return mesh;
+				return new THREE.Mesh(
+					new THREE.BoxGeometry(10, 10, 10),
+					new THREE.MeshBasicMaterial({color: 0xFF0000, wireframe: true})
+				);
 			}
 			function PirhanaPlantMesh(){
-				var geometry = new THREE.BoxGeometry(10, 10, 10);
-				var col = 0xFF00FF;
-				var material = new THREE.MeshBasicMaterial({color: col, wireframe: true});
-				var mesh = new THREE.Mesh(geometry, material);
-				return mesh;
+				return new THREE.Mesh(
+					new THREE.BoxGeometry(15, 15, 15),
+					new THREE.MeshBasicMaterial({color: 0xFF0000, wireframe: true})
+				);
 			}
 			function TreeMesh(){
-				var geometry = new THREE.BoxGeometry(10, 40, 10);
-				var col = 0xAAFF00;
-				var material = new THREE.MeshBasicMaterial({color: col, wireframe: true});
-				var mesh = new THREE.Mesh(geometry, material);
-				return mesh;
+				return new THREE.Mesh(
+					new THREE.BoxGeometry(10, 40, 10),
+					new THREE.MeshBasicMaterial({color: 0xFF0000, wireframe: true})
+				);
 			}
 			
 			// threejs vars
-			var camera, scene, renderer;
+			var camera, scene, renderer, mouse, raycaster;
+			var camera_birdseye;
 			var scenewidth = 960;
 			var sceneheight = 640;
 			
 			// keep track of meshes
 			var meshes = [];
+			var mesh_selection;
 
 			function init() { // initialise scene
 				renderer = new THREE.WebGLRenderer();
+				scene = new THREE.Scene();
+				mouse = new THREE.Vector2();
+				raycaster = new THREE.Raycaster();
+				
+				camera = new THREE.PerspectiveCamera(60, scenewidth/sceneheight, 1, 6000);
+				camera_birdseye = new THREE.PerspectiveCamera(60, scenewidth/sceneheight, 1, 6000);
+				
 				renderer.setPixelRatio(window.devicePixelRatio);
 				renderer.setSize(scenewidth, sceneheight);
+				renderer.enableScissorTest(true);
 				renderer.domElement.style.width = "960px";
 				renderer.domElement.style.height = "640px";
 				renderer.domElement.style.border = "1px solid #444";
 				document.getElementById("container").appendChild(renderer.domElement);
-				camera = new THREE.PerspectiveCamera(60, scenewidth/sceneheight, 1, 6000);
+				
 				camera.position.x = 1500;
 				camera.position.y = 500;
 				camera.position.z = 3000;
-				scene = new THREE.Scene();
+				
+				camera_birdseye.position.x = 1300;
+				camera_birdseye.position.y = 3000;
+				camera_birdseye.position.z = 0;
+				camera_birdseye.rotation.x = -(2 * (Math.PI) / 4);
+				
+				renderer.domElement.onmousemove = function(e){
+					var rect = this.getBoundingClientRect();
+					mouse.x = ((e.clientX - rect.x) / this.clientWidth ) * 2 - 1;
+					mouse.y = -((e.clientY - rect.y) / this.clientHeight ) * 2 + 1;
+				}
+				renderer.domElement.onmousedown = function(e){
+					e.preventDefault();
+					raycaster.setFromCamera(mouse, camera);
+					var intersects = raycaster.intersectObjects(scene.children); 
+					if(intersects.length > 0 && meshes[intersects[0].object.identity][0] == "object") {
+						mesh_selection = meshes[intersects[0].object.identity];
+						console.log(meshes[intersects[0].object.identity]);
+						for(var i = 0; i < meshes.length; i++){
+							if(meshes[i][0] == "object"){
+								meshes[i][2].material.color.g = 0;
+							}
+						}
+						mesh_selection[2].material.color.g = 1;
+						intersects[0].object.material.color.g = 1;
+					}
+				}
 			}
 			
-			function addmesh(mesh, x, y, z){ // add mesh to scene with coordinated, save ref to meshes array
+			function addmesh(mesh, x, y, z, cat, tag){ // add mesh to scene with coordinates, save ref to meshes array
 				mesh.position.x = x || 0;
 				mesh.position.y = y || 0;
 				mesh.position.z = z || 0;
 				scene.add(mesh);
-				meshes.push(mesh);
+				mesh.identity = meshes.push([cat || "", tag || "", mesh]) - 1;
+				console.log(mesh.identity);
 			}
 			
 			function drawCourseGeometry(){ // course mesh
@@ -133,55 +174,112 @@
 					vertices[i*3 + 2] = vertexPositions[i][2];
 				}
 				geometry.addAttribute('position', new THREE.BufferAttribute(vertices, 3));
-				var col = 0x666666;
-				var material = new THREE.MeshBasicMaterial( { color: col, wireframe: true} );
+				var material = new THREE.MeshBasicMaterial( { color: 0x666666, wireframe: true} );
 				addmesh(new THREE.Mesh(geometry, material));
 			}
-			
+				
+			function getPresetArray(name){
+				var course_preset = document.getElementById("course-preset").selectedOptions[0];
+				return course_preset.getAttribute(name).split(",").map(function(x){return parseInt(x);});
+			}
+				
 			function drawSeg06(){ // just path and object positions for now
 				var LIST_END = -0x8000; // position lists end when an X coordinate is 0x8000 apparently
+
+				var course_preset = document.getElementById("course-preset").selectedOptions[0];
 				
-				// detailed path:
-				var geometry = new THREE.BufferGeometry();
-				var vertexPositions = [];
-				for(var i = 0x57B0/2; s16data[i] ^ LIST_END; i += 4){
-					vertexPositions.push([s16data[i+0], s16data[i+1], s16data[i+2]]);
-				}
-				var vertices = new Float32Array(vertexPositions.length * 3);
-				for(var i = 0; i < vertexPositions.length; i++){
-					vertices[i*3 + 0] = vertexPositions[i][0];
-					vertices[i*3 + 1] = vertexPositions[i][1];
-					vertices[i*3 + 2] = vertexPositions[i][2];
-				}
-				geometry.addAttribute('position', new THREE.BufferAttribute(vertices, 3));
-				var material = new THREE.MeshBasicMaterial({color: 0x00FF00, wireframe: true});
-				addmesh(new THREE.Mesh(geometry, material));
+				var path_u = getPresetArray("data-path-u");
+				var path   = getPresetArray("data-path");
+				var items  = getPresetArray("data-items");
+				var plants = getPresetArray("data-plants");
+				var trees  = getPresetArray("data-trees");
 				
-				// simple path:
-				geometry = new THREE.BufferGeometry();
-				vertexPositions = [];
-				for(var i = 0x5568/2; s16data[i] ^ LIST_END; i += 4){
-					vertexPositions.push([s16data[i+0], s16data[i+1], s16data[i+2]]);
-				}
-				var vertices = new Float32Array( vertexPositions.length * 3)
-				for(var i = 0; i < vertexPositions.length; i++){
-					vertices[i*3 + 0] = vertexPositions[i][0];
-					vertices[i*3 + 1] = vertexPositions[i][1];
-					vertices[i*3 + 2] = vertexPositions[i][2];
-				}
-				geometry.addAttribute('position', new THREE.BufferAttribute(vertices, 3));
-				material = new THREE.MeshBasicMaterial({color: 0xFFFF00, wireframe: true});
-				addmesh(new THREE.Mesh(geometry, material));
+				// detailed paths:
+				path.forEach(function(path_offset){
+					var geometry = new THREE.BufferGeometry();
+					var vertexPositions = [];
+					for(var i = path_offset/2; s16data[i] ^ LIST_END; i += 4){
+						vertexPositions.push([s16data[i+0], s16data[i+1], s16data[i+2]]);
+					}
+					var vertices = new Float32Array(vertexPositions.length * 3);
+					for(var i = 0; i < vertexPositions.length; i++){
+						vertices[i*3 + 0] = vertexPositions[i][0];
+						vertices[i*3 + 1] = vertexPositions[i][1];
+						vertices[i*3 + 2] = vertexPositions[i][2];
+					}
+					geometry.addAttribute('position', new THREE.BufferAttribute(vertices, 3));
+					var material = new THREE.PointCloudMaterial({color: 0x00FF00, size: 10});
+					addmesh(new THREE.PointCloud(geometry, material), 0, 0, 0, "data", "path");
+				});
+				
+				// simple paths:
+				path_u.forEach(function(path_u_offset){
+					geometry = new THREE.BufferGeometry();
+					vertexPositions = [];
+					for(var i = path_u_offset/2; s16data[i] ^ LIST_END; i += 4){
+						vertexPositions.push([s16data[i+0], s16data[i+1], s16data[i+2]]);
+					}
+					var vertices = new Float32Array( vertexPositions.length * 3)
+					for(var i = 0; i < vertexPositions.length; i++){
+						vertices[i*3 + 0] = vertexPositions[i][0];
+						vertices[i*3 + 1] = vertexPositions[i][1];
+						vertices[i*3 + 2] = vertexPositions[i][2];
+					}
+					geometry.addAttribute('position', new THREE.BufferAttribute(vertices, 3));
+					material = new THREE.PointCloudMaterial({color: 0x005555, size: 20});
+					addmesh(new THREE.PointCloud(geometry, material), 0, 0, 0, "data", "path_u");
+				});
 				
 				// objects:
-				for(var i = 0x9498/2; s16data[i] ^ LIST_END; i += 4){ // item boxes
-					addmesh(new ItemBoxMesh(), s16data[i+0], s16data[i+1], s16data[i+2]);
-				}
-				for(var i = 0x9518/2; s16data[i] ^ LIST_END; i += 4){ // pirhana plants
-					addmesh(new PirhanaPlantMesh(), s16data[i+0], s16data[i+1], s16data[i+2]);
-				}
-				for(var i = 0x9570/2; s16data[i] ^ LIST_END; i += 4){ // trees
-					addmesh(new TreeMesh(), s16data[i+0], s16data[i+1], s16data[i+2]);
+				items.forEach(function(items_offset){ // item boxes
+					for(var i = items_offset/2; s16data[i] ^ LIST_END; i += 4){
+						addmesh(new ItemBoxMesh(), s16data[i+0], s16data[i+1], s16data[i+2], "object", "Item box");
+					}
+				});
+				plants.forEach(function(plants_offset){ // piranha plants
+					for(var i = plants_offset/2; s16data[i] ^ LIST_END; i += 4){
+						addmesh(new PirhanaPlantMesh(), s16data[i+0], s16data[i+1], s16data[i+2], "object", "Piranha plant");
+					}
+				});
+				trees.forEach(function(trees_offset){ // trees
+					for(var i = trees_offset/2; s16data[i] ^ LIST_END; i += 4){
+						addmesh(new TreeMesh(), s16data[i+0], s16data[i+1], s16data[i+2], "object", "Tree A");
+					}
+				});
+				
+				var object_pane = document.getElementById("objects");
+				for(var i = 0; i < meshes.length; i++){
+					if(meshes[i][0] == "object"){
+						var object_entry = document.createElement("div");
+						object_entry.className = "object_entry";
+						object_entry.appendChild(document.createTextNode(meshes[i][1]));
+						object_entry.index = i;
+						object_entry.onmouseenter = function(){
+							for(var i = 0; i < meshes.length; i++){
+								if(meshes[i][0] == "object"){
+									meshes[i][2].material.color.b = 0;
+								}
+							}
+							meshes[this.index][2].material.color.b = 1;
+						}
+						object_entry.onmouseleave = function(){
+							for(var i = 0; i < meshes.length; i++){
+								if(meshes[i][0] == "object"){
+									meshes[i][2].material.color.b = 0;
+								}
+							}
+						}
+						object_entry.onclick = function(){
+							for(var i = 0; i < meshes.length; i++){
+								if(meshes[i][0] == "object"){
+									meshes[i][2].material.color.g = 0;
+								}
+							}
+							meshes[this.index][2].material.color.g = 1;
+							mesh_selection = meshes[this.index];
+						}
+						object_pane.appendChild(object_entry);
+					}
 				}
 			}
 
@@ -198,8 +296,8 @@
 				65: function(){ camera.translateX(-10); }, // a - pan left
 				83: function(){ camera.translateZ( 10); }, // s - move backward
 				68: function(){ camera.translateX( 10); }, // d - pan right
-				90: function(){ camera.translateY(-10); }, // z - pan down
-				88: function(){ camera.translateY( 10); }, // x - pan up
+				90: function(){ camera.position.y -= 10; /*translateY(-10);*/ }, // z - pan down
+				88: function(){ camera.position.y -= 10; /*camera.translateY( 10);*/ }, // x - pan up
 				40: function(){ camera.rotateX( -0.01); }, // down - rotate down
 				38: function(){ camera.rotateX(  0.01); }, // up - rotate up
 				37: function(){ camera.rotateY(  0.01); }, // left - rotate left
@@ -215,11 +313,20 @@
 				delete keysdown[e.keyCode];
 			}
 			function animate(){
-				requestAnimationFrame( animate );
+				requestAnimationFrame(animate);
 				for(var i in keysdown){
 					if(i in keyevents) keyevents[i]();
 				}
+				// render main view:
+				renderer.setClearColor(0x000000, 1);
+				renderer.setViewport(0, 0, scenewidth, sceneheight);
+				renderer.setScissor(0, 0, scenewidth, sceneheight);
 				renderer.render(scene, camera);
+				// render bird's eye view:
+				renderer.setClearColor(0x111111, 1);
+				renderer.setViewport(scenewidth - scenewidth/5 - 10, sceneheight - sceneheight/5 - 10, scenewidth/5, sceneheight/5);
+				renderer.setScissor(scenewidth - scenewidth/5 - 10, sceneheight - sceneheight/5 - 10, scenewidth/5, sceneheight/5);
+				renderer.render(scene, camera_birdseye);
 			}
 			init();
 			animate();
