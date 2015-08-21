@@ -80,7 +80,7 @@
 					new THREE.MeshBasicMaterial({color: 0xFF0000, wireframe: true})
 				);
 			}
-			function PirhanaPlantMesh(){
+			function PiranhaPlantMesh(){
 				return new THREE.Mesh(
 					new THREE.BoxGeometry(15, 15, 15),
 					new THREE.MeshBasicMaterial({color: 0xFF0000, wireframe: true})
@@ -110,6 +110,7 @@
 				raycaster = new THREE.Raycaster();
 				
 				camera = new THREE.PerspectiveCamera(60, scenewidth/sceneheight, 1, 6000);
+				camera.rotation.order = "YXZ";
 				camera_birdseye = new THREE.PerspectiveCamera(60, scenewidth/sceneheight, 1, 6000);
 				
 				renderer.setPixelRatio(window.devicePixelRatio);
@@ -149,6 +150,9 @@
 						mesh_selection[2].material.color.g = 1;
 						intersects[0].object.material.color.g = 1;
 					}
+				}
+				renderer.domElement.onwheel = function(e){
+					camera.translateZ(e.deltaY * 30);
 				}
 			}
 			
@@ -238,7 +242,7 @@
 				});
 				plants.forEach(function(plants_offset){ // piranha plants
 					for(var i = plants_offset/2; s16data[i] ^ LIST_END; i += 4){
-						addmesh(new PirhanaPlantMesh(), s16data[i+0], s16data[i+1], s16data[i+2], "object", "Piranha plant");
+						addmesh(new PiranhaPlantMesh(), s16data[i+0], s16data[i+1], s16data[i+2], "object", "Piranha plant");
 					}
 				});
 				trees.forEach(function(trees_offset){ // trees
@@ -296,16 +300,21 @@
 				65: function(){ camera.translateX(-10); }, // a - pan left
 				83: function(){ camera.translateZ( 10); }, // s - move backward
 				68: function(){ camera.translateX( 10); }, // d - pan right
-				90: function(){ camera.position.y -= 10; /*translateY(-10);*/ }, // z - pan down
-				88: function(){ camera.position.y -= 10; /*camera.translateY( 10);*/ }, // x - pan up
-				40: function(){ camera.rotateX( -0.01); }, // down - rotate down
-				38: function(){ camera.rotateX(  0.01); }, // up - rotate up
-				37: function(){ camera.rotateY(  0.01); }, // left - rotate left
-				39: function(){ camera.rotateY( -0.01); }  // right - rotate right
+				90: function(){ camera.translateY(-10); }, // z - move down
+				88: function(){ camera.translateY( 10); }, // x - move up
+				40: function(){ camera.rotateX( -0.05); }, // down - rotate down
+				38: function(){ camera.rotateX(  0.05); }, // up - rotate up
+				37: function(){ camera.rotateY(  0.05); }, // left - rotate left
+				39: function(){ camera.rotateY( -0.05); }  // right - rotate right
 			};
+			/*
+			renderer.domElement.onscroll = function(e){
+				console.log(e);
+			}*/
 			
 			var keysdown = [];
 			document.body.onkeydown = function(e){
+				//e.preventDefault();
 				keysdown[e.keyCode] = true;
 				//console.log(e);
 			}
@@ -313,6 +322,7 @@
 				delete keysdown[e.keyCode];
 			}
 			function animate(){
+				camera.rotation.z = 0;
 				requestAnimationFrame(animate);
 				for(var i in keysdown){
 					if(i in keyevents) keyevents[i]();
