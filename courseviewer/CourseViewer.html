@@ -44,32 +44,16 @@
 			</div>
 		</center>
 		<script src="three.min.js"></script>
+		<script src="shared.js"></script>
 		<script>
-			function BinInput(fileElement, callback){
-				if(typeof(fileElement) == "string"){
-					fileElement = document.getElementById(fileElement);
-				}
-				var reader = new FileReader();
-				reader.onloadend = function(){
-					callback(this.result);
-				}
-				fileElement.onchange = function(){
-					reader.readAsArrayBuffer(this.files[0]);
-				}
-				this.fileElement = fileElement;
-				this.callback    = callback;
-			}
-			function SWAP16(s){
-				return ((s & 0xFF00) >> 8) | ((s & 0xFF) << 8);
-			}
 			// file loaders:
 			var s16data; // s16 array of last loaded file
 			BinInput("meshfile", function(result){
-				s16data = (new Int16Array(result)).map(function(s){return SWAP16(s);}); // parse big endian s16 array
+				s16data = new Int16ArrayBE(result);
 				drawCourseGeometry();
 			});
 			BinInput("pathfile", function(result){
-				s16data = (new Int16Array(result)).map(function(s){return SWAP16(s);}); // parse big endian s16 array
+				s16data = new Int16ArrayBE(result);
 				drawSeg06();
 			});
 
