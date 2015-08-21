@@ -178,15 +178,15 @@
 					vertices[i*3 + 2] = vertexPositions[i][2];
 				}
 				geometry.addAttribute('position', new THREE.BufferAttribute(vertices, 3));
-				var material = new THREE.MeshBasicMaterial( { color: 0x666666, wireframe: true} );
+				var material = new THREE.MeshBasicMaterial({color: 0x666666, wireframe: true});
 				addmesh(new THREE.Mesh(geometry, material));
 			}
-				
+			
 			function getPresetArray(name){
 				var course_preset = document.getElementById("course-preset").selectedOptions[0];
 				return course_preset.getAttribute(name).split(",").map(function(x){return parseInt(x);});
 			}
-				
+			
 			function drawSeg06(){ // just path and object positions for now
 				var LIST_END = -0x8000; // position lists end when an X coordinate is 0x8000 apparently
 

@@ -1,6 +1,7 @@
 # mk64extract
 MK64 ROM documentation & extractor tool
 
-To use, name an MK64 rom "MK64.z64", put it in the directory of the tool and run "_run.bat".
+To extract, name an MK64 rom "MK64.z64", put it in the directory of the tool and run "_run.bat".
 
-You can view meshes of any exported files labeled with "_MESH.bin" using the webgl mesh viewer in the "meshrender" directory.
+To use the level viewer, select a level preset (segment offsets), and load the respective SEG04 and SEG06 files.
+![Screenshot](screenshot.png)

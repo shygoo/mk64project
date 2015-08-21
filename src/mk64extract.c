@@ -81,8 +81,8 @@ int main(int argc, char* argv[]){
 		void* decoded_f3d  = mio0decode(mio0_block_f3d, &decoded_f3d_size);
 		void* decoded_mesh = mio0decode(mio0_block_mesh, &decoded_mesh_size);
 		
-		sprintf(output_filename_f3d,  "%s\\%02d_%s_F3D.bin\0",  output_directory, i, levelnames[i]);  
-		sprintf(output_filename_mesh, "%s\\%02d_%s_MESH.bin\0", output_directory, i, levelnames[i]);  
+		sprintf(output_filename_f3d,  "%s\\%02d_%s_SEG06.bin\0",  output_directory, i, levelnames[i]);  
+		sprintf(output_filename_mesh, "%s\\%02d_%s_SEG04.bin\0", output_directory, i, levelnames[i]);  
 		sprintf(output_filename_unk,  "%s\\%02d_%s_REFS.bin\0",  output_directory, i, levelnames[i]);  
 		
 		writefile(output_filename_f3d,  decoded_f3d,  decoded_f3d_size);
