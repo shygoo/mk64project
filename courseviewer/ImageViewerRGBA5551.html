@@ -1,0 +1,39 @@
+<body>
+<input type="file" id="imgfile"><br>
+width: <input type="text" value="32" onkeyup="window.width = this.value; draw();">
+height: <input type="text" value="64" onkeyup="window.height = this.value; draw();">
+xscale: <input type="text" value="5.0" onkeyup="window.xscale = this.value; draw();">
+yscale: <input type="text" value="5.0" onkeyup="window.yscale = this.value; draw();">
+<br><br>
+<canvas id="canvas" style="background-color:#000;" width="512" height="512"></canvas>
+<script src="shared.js"></script>
+<script>
+
+var imgdata; // Uint16Array
+var canvas = document.getElementById("canvas");
+var ctx = document.getElementById("canvas").getContext("2d");
+var width  = 64;
+var height = 64;
+var xscale = 5.0;
+var yscale = 5.0;
+
+function draw(){
+	ctx.clearRect(0, 0, 512, 512);
+	for(var i = 0; i < imgdata.length && ((i / width)|0) < height; i++){
+		var pixel = imgdata[i];
+		var r = ((pixel & 0xF800) >> 11) << 3;
+		var g = ((pixel & 0x07C0) >>  6) << 3;
+		var b = ((pixel & 0x003E) >>  1) << 3;
+		var a = pixel & 1;
+		ctx.fillStyle = "rgba(" + r + ", " + g + ", " + b + ", " + a + ")";
+		ctx.fillRect((i % width) * xscale, ((i / width)|0) * yscale, xscale, yscale);
+	}
+}
+
+BinInput("imgfile", function(result){
+	imgdata = new Uint16ArrayBE(result);
+	draw();
+});
+
+</script>
+</body>
