@@ -1,3 +1,12 @@
+<body>
+
+<script src="shared.js"></script>
+<script src="three.js"></script>
+<script>
+
+</script>
+</body>
+
 <!DOCTYPE html>
 <html lang="en">
 	<head>
@@ -9,54 +18,161 @@
 				background-color: #111;
 				overflow: hidden;
 				color: #fff;
-				font: 10px tahoma;
+				font: 11px tahoma;
 			}
 			input, select, option {
-				font: 10px tahoma;
+				font: 11px tahoma;
 			}
-			.object_entry:hover { 
+			.optionlist {
+				display:inline-block; vertical-align: top; overflow:auto; height: 300px; width: 150px; background-color: #000; border:1px solid #444; padding:4px;
+				cursor: default;
+			}
+			.optionlist div {
+				cursor: default;
+			}
+			.optionlist div:hover {
 				background-color: #440;
 			}
 		</style>
 	</head>
 	<body>
-		<div>
-			<div style="display:inline-block;border:1px solid #444;padding:3px;">
-				course mesh (seg 04)<br>
-				<input type="file" id="meshfile">
-			</div>
-			<div style="display:inline-block;border:1px solid #444;padding:3px;">
-				course path (seg 06)<br>
-				offsets
-				<select id="course-preset" title="Hardcoded settings">
-					<option data-path-u="0x5568" data-path="0x57B0" data-items="0x9498" data-plants="0x9518" data-trees="0x9570">Mario raceway</option>
-				</select>
-				<input type="file" id="pathfile">
-			</div>
-		</div>
+		Rom file (Z64) <input type="file" id="romfile" value="">
 		<center style="padding:10px;">
 			<div style="display: inline-block; text-align:left;">
-				<div id="controls">
-					[Pan] [Rotate]
+				<div style="display:inline-block; vertical-align:top;">
+					<div style="background-color:#444;padding:4px;">Courses</div>
+					<div id="coursemenu" style="display:inline-block" class="optionlist"></div>
 				</div>
-				<div id="container" style="display:inline-block;"></div>
-				<div id="objects" style="display:inline-block; vertical-align: top; overflow:auto; height: 300px; width: 150px; background-color: #000; border:1px solid #444; padding:4px;"></div>
+				<div style="display:inline-block; vertical-align:top;">
+					<div style="background-color:#444;padding:4px;" id="loadedname">(No course loaded)</div>
+					<div id="container" style="display:inline-block;"></div>
+				</div>
+				<div id="objects" style="display:inline-block;" class="optionlist"></div>
 			</div>
 		</center>
+		<pre id="dbg"></pre>
 		<script src="three.min.js"></script>
 		<script src="shared.js"></script>
 		<script>
+			var coursemenu = document.getElementById("coursemenu");
+			var loadedname = document.getElementById("loadedname");
+			var dbg = document.getElementById("dbg");
+			function log(s, nobr){
+				dbg.innerHTML += s + (nobr ? "" : "\n"); 
+			}
 			// file loaders:
-			var s16data; // s16 array of last loaded file
-			BinInput("meshfile", function(result){
-				s16data = new Int16ArrayBE(result);
-				drawCourseGeometry();
-			});
-			BinInput("pathfile", function(result){
-				s16data = new Int16ArrayBE(result);
-				drawSeg06();
-			});
+			//var s16data; // s16 array of last loaded file
 
+			var MAPNAMES = [
+				"Mario Raceway      ", 
+				"Choco Mountain     ",
+				"Bowser's Castle    ",
+				"Banshee Boardwalk  ",
+				"Yoshi Valley       ",
+				"Frappe Snowland    ",
+				"Koopa Troopa Beach ",
+				"Royal Raceway      ",
+				"Luigi Raceway      ",
+				"Moo Moo Farm       ",
+				"Toad's Turnpike    ",
+				"Kalimari Desert    ",
+				"Sherbet Land       ",
+				"Rainbow Road       ",
+				"Wario Stadium      ",
+				"Block Fort         ",
+				"Skyscraper         ",
+				"Double Deck        ",
+				"DK's Jungle Parkway",
+				"Big Donut          ",
+			];
+			
+			var MAPSTRUCTS = 0x122390;
+			
+			var SEGMENT04;
+			var SEGMENT06;
+			
+			var maps = [];
+			
+			var map_presets = {
+				0x00: { // mario raceway
+					path_u: [0x5568],
+					path:   [0x57B0],
+					items:  [0x9498],
+					plants: [0x9518],
+					trees:  [0x9570]
+				},
+				0x01: {  // choco
+					path_u: [0x4480],
+					path:   [0x47F0],
+					items:  [0x7250]
+				},
+				0x02: {  // bowser
+					path_u: [0x4F90],
+					path:   [0x51D0],
+					bushes: [0x9290],
+					items:  [0x9370],
+				},
+				0x03: { // banshee boardwalk
+					path_u: [0x4578],
+					path:   [0x47F0],
+					items:  [0xB3D0]
+				},
+				0x04: {  // yoshi 
+					path_u: [0xD780, 0xD9C8, 0xDC18, 0xDEA8],
+					path:   [0xE150, 0xF680, 0x10B58, 0x12090],
+					trees:  [0x180A0],
+					items:  [0x18110],
+				},
+				0x05: { // frappe snowland
+					path:   [0x36E8],
+					path_u: [0x34A0],
+					items:  [0x7810],
+					trees:  [0x7718],
+				}, 
+				0x06: { // koopa troopa beach
+					path: [0xB1A8],
+					path_u: [0xADE0],
+					items: [0x18E78],
+					trees: [0x18F70],
+				}, 
+				0x07: {}, // 
+				0x08: {}, // 
+				0x09: {}, // 
+				0x0A: {}, // 
+				0x0B: {}, // 
+				0x0C: {}, // 
+				0x0D: {}, // 
+				0x0E: {}, // 
+				0x0F: {}, // 
+				0x10: {}, // 
+				0x11: {}, // 
+				0x12: {}, // 
+				0x13: {}, // 
+			};
+			
+			var romdata;
+			BinInput("romfile", function(result){
+				romdata = new Uint8Array(result);
+				for(var i = 0; i < 16; i++){
+					var map = {
+						ASSETS_START : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x00),
+						ASSETS_END   : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x04),
+						MESH_START   : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x08),
+						MESH_END     : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x0C),
+						REFS_START   : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x10),
+						REFS_END     : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x14),
+					}
+					maps.push(map);
+					var courselink = document.createElement("div");
+					courselink.mapId = i;
+					courselink.onclick = function(){drawMap(this.mapId);}
+					courselink.appendChild(document.createTextNode(MAPNAMES[i]));
+					coursemenu.appendChild(courselink);
+					//log(JSON.stringify(map));
+				}
+				drawMap(0);
+			});
+			
 			// Mesh classes:
 			function ItemBoxMesh(){
 				return new THREE.Mesh(
@@ -64,7 +180,7 @@
 					new THREE.MeshBasicMaterial({color: 0xFF0000, wireframe: true})
 				);
 			}
-			function PiranhaPlantMesh(){
+			function PlantMesh(){
 				return new THREE.Mesh(
 					new THREE.BoxGeometry(15, 15, 15),
 					new THREE.MeshBasicMaterial({color: 0xFF0000, wireframe: true})
@@ -146,10 +262,16 @@
 				mesh.position.z = z || 0;
 				scene.add(mesh);
 				mesh.identity = meshes.push([cat || "", tag || "", mesh]) - 1;
-				console.log(mesh.identity);
+				//console.log(mesh.identity);
 			}
 			
-			function drawCourseGeometry(){ // course mesh
+			function getPresetArray(levelnum, name){
+				var course_preset = document.getElementById("course-preset").selectedOptions[0];
+				return course_preset.getAttribute(name).split(",").map(function(x){return parseInt(x);});
+			}
+			
+			function drawCourseGeometry(segmentbuffer){ // course mesh
+				var s16data = Uint8ToInt16ArrayBE(segmentbuffer);
 				var geometry = new THREE.BufferGeometry();
 				var vertexPositions = [];
 				for(var i = 0; i < s16data.length; i += 7){
@@ -166,23 +288,23 @@
 				addmesh(new THREE.Mesh(geometry, material));
 			}
 			
-			function getPresetArray(name){
-				var course_preset = document.getElementById("course-preset").selectedOptions[0];
-				return course_preset.getAttribute(name).split(",").map(function(x){return parseInt(x);});
-			}
-			
-			function drawSeg06(){ // just path and object positions for now
+			function drawSeg06(segmentbuffer, mapId){ // just path and object positions for now
+				//console.log("drewseg6")
+				var s16data = Uint8ToInt16ArrayBE(segmentbuffer);
 				var LIST_END = -0x8000; // position lists end when an X coordinate is 0x8000 apparently
 
-				var course_preset = document.getElementById("course-preset").selectedOptions[0];
 				
-				var path_u = getPresetArray("data-path-u");
-				var path   = getPresetArray("data-path");
-				var items  = getPresetArray("data-items");
-				var plants = getPresetArray("data-plants");
-				var trees  = getPresetArray("data-trees");
+				var path_u = map_presets[mapId].path_u || []; //getPresetArray("data-path-u");
+				var path   = map_presets[mapId].path || []; //getPresetArray("data-path");
+				var items  = map_presets[mapId].items || []; //getPresetArray("data-items");
+				var plants = map_presets[mapId].plants || []; //getPresetArray("data-plants");
+				var trees  = map_presets[mapId].trees || []; //getPresetArray("data-trees");
+				var bushes = map_presets[mapId].bushes || [];
 				
+
 				// detailed paths:
+				pathcolors = [0x00FF00, 0xFF0000, 0xFFFF00, 0xFF00FF];
+				pathcolor_i = 0;
 				path.forEach(function(path_offset){
 					var geometry = new THREE.BufferGeometry();
 					var vertexPositions = [];
@@ -196,11 +318,15 @@
 						vertices[i*3 + 2] = vertexPositions[i][2];
 					}
 					geometry.addAttribute('position', new THREE.BufferAttribute(vertices, 3));
-					var material = new THREE.PointCloudMaterial({color: 0x00FF00, size: 10});
+					var col = (Math.random()*0x7FFFFF | 0) + 0x7FFFFF
+					var material = new THREE.PointCloudMaterial({color: pathcolors[pathcolor_i], size: 1});
 					addmesh(new THREE.PointCloud(geometry, material), 0, 0, 0, "data", "path");
+					pathcolor_i = (pathcolor_i + 1) % 4;
 				});
 				
 				// simple paths:
+				path_ucolors = [0x00AA00, 0xAA0000, 0xAAAA00, 0xAA00AA];
+				path_ucolor_i = 0;
 				path_u.forEach(function(path_u_offset){
 					geometry = new THREE.BufferGeometry();
 					vertexPositions = [];
@@ -214,8 +340,9 @@
 						vertices[i*3 + 2] = vertexPositions[i][2];
 					}
 					geometry.addAttribute('position', new THREE.BufferAttribute(vertices, 3));
-					material = new THREE.PointCloudMaterial({color: 0x005555, size: 20});
+					material = new THREE.PointCloudMaterial({color: path_ucolors[path_ucolor_i], size: 20});
 					addmesh(new THREE.PointCloud(geometry, material), 0, 0, 0, "data", "path_u");
+					path_ucolor_i = (path_ucolor_i + 1) % 4;
 				});
 				
 				// objects:
@@ -226,7 +353,7 @@
 				});
 				plants.forEach(function(plants_offset){ // piranha plants
 					for(var i = plants_offset/2; s16data[i] ^ LIST_END; i += 4){
-						addmesh(new PiranhaPlantMesh(), s16data[i+0], s16data[i+1], s16data[i+2], "object", "Piranha plant");
+						addmesh(new PlantMesh(), s16data[i+0], s16data[i+1], s16data[i+2], "object", "Piranha plant");
 					}
 				});
 				trees.forEach(function(trees_offset){ // trees
@@ -234,12 +361,18 @@
 						addmesh(new TreeMesh(), s16data[i+0], s16data[i+1], s16data[i+2], "object", "Tree A");
 					}
 				});
+				bushes.forEach(function(bushes_offset){ // bushes
+					for(var i = bushes_offset/2; s16data[i] ^ LIST_END; i += 4){
+						addmesh(new PlantMesh(), s16data[i+0], s16data[i+1], s16data[i+2], "object", "Bush");
+					}
+				});
 				
 				var object_pane = document.getElementById("objects");
+				object_pane.innerHTML = "";
 				for(var i = 0; i < meshes.length; i++){
 					if(meshes[i][0] == "object"){
 						var object_entry = document.createElement("div");
-						object_entry.className = "object_entry";
+						//object_entry.className = "object_entry";
 						object_entry.appendChild(document.createTextNode(meshes[i][1]));
 						object_entry.index = i;
 						object_entry.onmouseenter = function(){
@@ -270,16 +403,37 @@
 					}
 				}
 			}
-
+			
+			function drawMap(mapId){
+				//console.log("drewmap");
+				scene = new THREE.Scene();
+				meshes = [];
+				resetCamera();
+				var mapdata = maps[mapId];
+				var presets = map_presets[mapId];
+				if(presets){
+					var seg06 = mio0decode(romdata, mapdata.ASSETS_START);
+					drawSeg06(seg06, mapId);
+				} else {
+					log("Skipped seg06, no preset list for this course available ("+mapId+")")
+				}
+				var seg04 = mio0decode(romdata, mapdata.MESH_START);
+				drawCourseGeometry(seg04);
+				loadedname.innerHTML = MAPNAMES[mapId];
+				//console.log(test);
+			}
+			
+			function resetCamera(){
+				with(camera.position){
+					x = 1500;
+					y = 500;
+					z = 2500;
+				}
+				with(camera.rotation) x = y = z = 0;
+			}
+			
 			var keyevents = {
-				27: function(){ // esc - reset camera position
-					with(camera.position){
-						x = 1500;
-						y = 500;
-						z = 2500;
-					}
-					with(camera.rotation) x = y = z = 0;
-				},
+				27: function(){ resetCamera()           }, // esc - reset camera position
 				87: function(){ camera.translateZ(-10); }, // w - move forward
 				65: function(){ camera.translateX(-10); }, // a - pan left
 				83: function(){ camera.translateZ( 10); }, // s - move backward
@@ -291,10 +445,6 @@
 				37: function(){ camera.rotateY(  0.05); }, // left - rotate left
 				39: function(){ camera.rotateY( -0.05); }  // right - rotate right
 			};
-			/*
-			renderer.domElement.onscroll = function(e){
-				console.log(e);
-			}*/
 			
 			var keysdown = [];
 			document.body.onkeydown = function(e){
