@@ -1,6 +1,6 @@
 MK64 (U) hacking doc
 by shygoo
-Aug 17 2015
+Aug 23 2015
 ______________________________________________________
 
 ROM/RAM map
@@ -26,7 +26,8 @@ DATA ------ 800DC53C Game mode selection
      ------ 80165C18 Course RAM objects array? (bowser whomps, luigi hot air balloon)
      ------ 8018EDE4 Character selections
      ------ 8018EDF0 Player count selection
-CODE ?????? 8029D584 Does something with segment 06 offset (list similar to item box placements)
+CODE ?????? 8029D584 Place x with segment 06 offset
+     ?????? 8029D60C Place bushes with segment 06 offset (bowser's castle)
      ?????? 8029D830 Place all item boxes using segment 06 offset
      ?????? 802A7B94 Segment base setter
      ?????? 802A85CC MIO0 '0F' list related
