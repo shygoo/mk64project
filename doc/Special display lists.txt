@@ -29,7 +29,13 @@
 17 (802A9EE4) ?
 18 (802A9F38) ?
 19 (802A9F54) ?
-1A (802A9FC4) ?
+
+1A (802A9FC4) - texture properties
+ 1A [50] [50] // width/height
+ -> E8000000 00000000     // ?
+    F5101000 00000000     // texture properties
+    F2000000 00[07C][07C] // 32x32 texture size
+
 1B (802AA00C) ?
 1C (802AA030) ?
 1D (802AA054) ?
@@ -42,9 +48,9 @@
 24 (802AA150) ?
 25 (802AA174) ?
 
-26 (802AA198)
-   26 (no parameters)
-   BB000001 FFFFFFFF
+26 (802AA198) - texture scale 1
+ 26 (no parameters)
+ -> BB000001 FFFFFFFF
    
 27 (802AA1BC) ?
 28 (802AA1E0) ?
@@ -101,14 +107,42 @@
 
 mario raceway conversion 801DFC94 -> 80270DF8
 
-26     ->  BB000001 FFFFFFFF
-1A5050 -> E8000000 00000000 F5101000 00000000 F2000000 0007C07C
+26     -> BB000001 FFFFFFFF
+
+1A5050 -> E8000000 00000000     // ?
+          F5101000 00000000     // texture properties
+		  F2000000 00[07C][07C] // 32x32 texture size
  
+ 
+ 26                   -> BB000001 FFFFFFFF // texture scale 1
+ 1A 50 50             -> E8000000 00000000 
+                         F5101000 00014050 // colored 32x32 texture
+						 F2000000 0007C07C // 32x32 size
+ 20 03 00 70          -> FD100000 05001800 // segment 5 texture address [03 * 0x800]
+                         E8000000 00000000
+						 F5100000 07000000 // clear texture mode?
+						 E6000000 00000000
+						 F3000000 073FF100 loadblock?
+ 3E 00 00             -> 040030BF 04000000 // vertex info segment 04 (780 vertexes?)
+ 58 20 08 40 0C       -> B1000204 00000406 // "F3DEX_TRI2"?
+ 58 A4 18 C4 1C       -> B1080A0C 00080C0E // "F3DEX_TRI2"?
+ 58 28 29 48 2D       -> B1101214 00101416 // "F3DEX_TRI2"?
+ 2A                   -> B8000000 00000000 // end dl
+ 
+ 26 -> BB000001 FFFFFFFF
+ 1a -> E8000000 00000000 F5101000 00014050 F2000000 0007C07C
+ 20 -> FD100000 05001800 E8000000 00000000 F5100000 07000000 E6000000 00000000 F3000000 073FF100
+ 3e 0C 00 -> 040030BF 040000C0
+ 58
+ 58
+ 58
+ 2a
+ 2b
+ 2b
+ 2a
+ 26 1a 20 3a 58 58 2a 2b 2a
  26
- 1A 50 50
- 20 03 00 70
- 3E 00 00
- 58 20 08 40 0C
- 58 A4 18 C4 1C
- 58 28 29 48 2D
- 2A 2B 0E 00 2B 00 00
+ 
+ 
+ 801DFC94 list
+ 00270DF8 decompress
