@@ -24,7 +24,7 @@
 				font: 11px tahoma;
 			}
 			.optionlist {
-				display:inline-block; vertical-align: top; overflow:auto; height: 300px; width: 150px; background-color: #000; border:1px solid #444; padding:4px;
+				vertical-align: top; overflow:auto; height: 250px; width: 150px; background-color: #000; border:1px solid #444; padding:4px;
 				cursor: default;
 			}
 			.optionlist div {
@@ -41,19 +41,23 @@
 			<div style="display: inline-block; text-align:left;">
 				<div style="display:inline-block; vertical-align:top;">
 					<div style="background-color:#444;padding:4px;">Courses</div>
-					<div id="coursemenu" style="display:inline-block" class="optionlist"></div>
+					<div id="coursemenu" class="optionlist"></div>
+					<div style="background-color:#444;padding:4px;margin-top:4px">Objects</div>
+					<div id="objects" class="optionlist"></div>
 				</div>
 				<div style="display:inline-block; vertical-align:top;">
 					<div style="background-color:#444;padding:4px;" id="loadedname">(No course loaded)</div>
 					<div id="container" style="display:inline-block;"></div>
 				</div>
-				<div id="objects" style="display:inline-block;" class="optionlist"></div>
 			</div>
+			<canvas id="textures" width="1024" height="128" style="background-color:#000;border:1px solid #444;margin:5px;"></canvas>
 		</center>
 		<pre id="dbg"></pre>
 		<script src="three.min.js"></script>
 		<script src="shared.js"></script>
 		<script>
+			var tctx = document.getElementById("textures").getContext("2d");
+		
 			var coursemenu = document.getElementById("coursemenu");
 			var loadedname = document.getElementById("loadedname");
 			var dbg = document.getElementById("dbg");
@@ -126,15 +130,15 @@
 				0x05: { // frappe snowland
 					path:   [0x36E8],
 					path_u: [0x34A0],
-					items:  [0x7810],
 					trees:  [0x7718],
-				}, 
+					items:  [0x7810],
+				},
 				0x06: { // koopa troopa beach
-					path: [0xB1A8],
 					path_u: [0xADE0],
-					items: [0x18E78],
-					trees: [0x18F70],
-				}, 
+					path:   [0xB1A8],
+					items:  [0x18E78],
+					trees:  [0x18F70],
+				},
 				0x07: {}, // 
 				0x08: {}, // 
 				0x09: {}, // 
@@ -173,15 +177,17 @@
 				drawMap(0);
 			});
 			
+
+			
 			// Mesh classes:
 			function ItemBoxMesh(){
 				//var tdata = new Uint16Array([0xFFFF]);
-				console.log(test_texturedata);
-				var t = new THREE.DataTexture(test_texturedata, 32, 32, THREE.RGBAFormat, THREE.UnsignedShort5551Type);
+				//console.log(test_texturedata);
+				//var t = new THREE.DataTexture(test_texturedata, 32, 32, THREE.RGBAFormat, THREE.UnsignedShort5551Type);
 				t.needsUpdate = true;
 				return new THREE.Mesh(
 					new THREE.BoxGeometry(10, 10, 10),
-					new THREE.MeshBasicMaterial({map: t})
+					new THREE.MeshBasicMaterial({color: 0xFF0000, wireframe: true}/*{map: t}*/)
 				);
 			}
 			function PlantMesh(){
@@ -298,11 +304,11 @@
 				var LIST_END = -0x8000; // position lists end when an X coordinate is 0x8000 apparently
 
 				
-				var path_u = map_presets[mapId].path_u || []; //getPresetArray("data-path-u");
-				var path   = map_presets[mapId].path || []; //getPresetArray("data-path");
-				var items  = map_presets[mapId].items || []; //getPresetArray("data-items");
-				var plants = map_presets[mapId].plants || []; //getPresetArray("data-plants");
-				var trees  = map_presets[mapId].trees || []; //getPresetArray("data-trees");
+				var path_u = map_presets[mapId].path_u || [];
+				var path   = map_presets[mapId].path   || [];
+				var items  = map_presets[mapId].items  || [];
+				var plants = map_presets[mapId].plants || [];
+				var trees  = map_presets[mapId].trees  || [];
 				var bushes = map_presets[mapId].bushes || [];
 				
 
@@ -407,20 +413,51 @@
 					}
 				}
 			}
+			// draw single texture to tex canvas
+			function drawTexPreview(imgdata, x, y, width, height){
+				for(var i = 0; i < imgdata.length && ((i / width)|0) < height; i++){
+					var pixel = imgdata[i];
+					var r = ((pixel & 0xF800) >> 11) << 3;
+					var g = ((pixel & 0x07C0) >>  6) << 3;
+					var b = ((pixel & 0x003E) >>  1) << 3;
+					var a = pixel & 1;
+					tctx.fillStyle = "rgba(" + r + ", " + g + ", " + b + ", " + a + ")";
+					tctx.fillRect((i % width) + x, ((i / width)|0) + y, 1, 1);
+				}
+			}
 			
-			var test_texturedata; // TEST: load first texture from list here, apply to item boxes
+			function drawSeg05Preview(mapId){
+				tctx.clearRect(0, 0, 1024, 128);
+				var mapdata = maps[mapId];
+				var refs_start = mapdata.REFS_START & 0x00FFFFFF;
+				console.log(getU32BE(romdata, refs_start));
+				var mio0_address;
+				var x = 0;
+				var y = 0;
+				for(var i = 0; mio0_address = getU32BE(romdata, refs_start + i * 16); i++){
+					mio0_address = (mio0_address & 0x00FFFFFF) + 0x641F70;
+					var tex_size = getU32BE(romdata, refs_start + i * 16 + 8);
+					var tdata = Uint8ToUint16ArrayBE(mio0decode(romdata, mio0_address));
+					var width = (tex_size == 2048) ? 32 : 64;
+					var height = 32;
+					drawTexPreview(tdata, x, y, width, height);
+					x += width;
+					if(x >= 1024){
+						y += 32;
+						x = 0;
+					}
+				}
+			}
+			
+			//var test_texturedata; // TEST: load first texture from list here, apply to item boxes
 			
 			function drawMap(mapId){
+				drawSeg05Preview(mapId);
 				//console.log("drewmap");
 				scene = new THREE.Scene();
 				meshes = [];
 				resetCamera();
 				var mapdata = maps[mapId];
-				
-				//console.log(.toString(16));
-				test_texturedata = mio0decode(romdata, ((getU32BE(romdata, mapdata.REFS_START) & 0x00FFFFFF) + 0x641F70));
-				test_texturedata = Uint8ToUint16ArrayBE(test_texturedata).slice(0, 1024);
-				//console.log(test_texturedata);
 				
 				var presets = map_presets[mapId];
 				if(presets){
