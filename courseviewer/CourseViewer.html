@@ -175,9 +175,13 @@
 			
 			// Mesh classes:
 			function ItemBoxMesh(){
+				//var tdata = new Uint16Array([0xFFFF]);
+				console.log(test_texturedata);
+				var t = new THREE.DataTexture(test_texturedata, 32, 32, THREE.RGBAFormat, THREE.UnsignedShort5551Type);
+				t.needsUpdate = true;
 				return new THREE.Mesh(
 					new THREE.BoxGeometry(10, 10, 10),
-					new THREE.MeshBasicMaterial({color: 0xFF0000, wireframe: true})
+					new THREE.MeshBasicMaterial({map: t})
 				);
 			}
 			function PlantMesh(){
@@ -325,7 +329,7 @@
 				});
 				
 				// simple paths:
-				path_ucolors = [0x00AA00, 0xAA0000, 0xAAAA00, 0xAA00AA];
+				path_ucolors = [0x006600, 0x660000, 0x666600, 0x660066];
 				path_ucolor_i = 0;
 				path_u.forEach(function(path_u_offset){
 					geometry = new THREE.BufferGeometry();
@@ -340,7 +344,7 @@
 						vertices[i*3 + 2] = vertexPositions[i][2];
 					}
 					geometry.addAttribute('position', new THREE.BufferAttribute(vertices, 3));
-					material = new THREE.PointCloudMaterial({color: path_ucolors[path_ucolor_i], size: 20});
+					material = new THREE.PointCloudMaterial({color: path_ucolors[path_ucolor_i], size: 5});
 					addmesh(new THREE.PointCloud(geometry, material), 0, 0, 0, "data", "path_u");
 					path_ucolor_i = (path_ucolor_i + 1) % 4;
 				});
@@ -404,12 +408,20 @@
 				}
 			}
 			
+			var test_texturedata; // TEST: load first texture from list here, apply to item boxes
+			
 			function drawMap(mapId){
 				//console.log("drewmap");
 				scene = new THREE.Scene();
 				meshes = [];
 				resetCamera();
 				var mapdata = maps[mapId];
+				
+				//console.log(.toString(16));
+				test_texturedata = mio0decode(romdata, ((getU32BE(romdata, mapdata.REFS_START) & 0x00FFFFFF) + 0x641F70));
+				test_texturedata = Uint8ToUint16ArrayBE(test_texturedata).slice(0, 1024);
+				//console.log(test_texturedata);
+				
 				var presets = map_presets[mapId];
 				if(presets){
 					var seg06 = mio0decode(romdata, mapdata.ASSETS_START);
