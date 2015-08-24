@@ -74,6 +74,14 @@ function Uint8ToInt16ArrayBE(src){
 	return new Int16Array(ret);
 }
 
+function Uint8ToUint16ArrayBE(src){
+	var ret = [];
+	for(var i = 0; i < src.length; i += 2){
+		ret.push(getU16BE(src, i));
+	}
+	return new Uint16Array(ret);
+}
+
 // mio0 decoder
 function mio0decode(/*Uint8Array*/ src, src_offset){
 	var dest = [];
