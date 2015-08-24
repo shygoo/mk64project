@@ -41,7 +41,15 @@
 1D (802AA054) ?
 1E (802AA078) ?
 1F (802AA09C) ?
-20 (802AA0C0) ?
+
+20 (802AA0C0) - set segment 5 image
+ 20 [II] [?? ??]
+ -> FD100000 05[I * 0x800 ?] // segment 5 texture address [03 * 0x800] 
+    E8000000 00000000
+    F5100000 07000000 // clear texture mode? 
+    E6000000 00000000 
+    F3000000 073FF100 // loadblock? 
+ 
 21 (802AA0E4) ?
 22 (802AA108) ?
 23 (802AA12C) ?
@@ -49,14 +57,19 @@
 25 (802AA174) ?
 
 26 (802AA198) - texture scale 1
- 26 (no parameters)
+ 26
  -> BB000001 FFFFFFFF
    
 27 (802AA1BC) ?
 28 (802AA1E0) ?
 29 (802AA684) ?
-2A (802AA714) ?
-2B (802AA780) ?
+
+2A (802AA714) - end display list
+ 2A
+ -> B8000000 00000000
+ 
+2B (802AA780) - dlist jump
+
 2C (802A9FE8) ?
 2D (802AA6F0) ?
 2E (802A9F00) ?
@@ -75,7 +88,11 @@
 3B (802AA324) ?
 3C (802AA348) ?
 3D (802AA36C) ?
-3E (802AA390) ?
+
+3E (802AA390) - load segment 4 vertices
+ 3E [??] [??]
+ -> 040030BF 040000C0
+
 3F (802AA3B4) ?
 40 (802AA3D8) ?
 41 (802AA3FC) ?
@@ -101,48 +118,46 @@
 55 (802A9FA8) ?
 56 (802AA738) ?
 57 (802AA75C) ?
-58 (802AA6A8) ?
 
+58 (802AA6A8) render two triangles?
+ 58 20 08 40 0C // dunno params yet
+ -> B1000204 00000406
 
-
+________________________________________
+ 
 mario raceway conversion 801DFC94 -> 80270DF8
 
-26     -> BB000001 FFFFFFFF
-
-1A5050 -> E8000000 00000000     // ?
-          F5101000 00000000     // texture properties
-		  F2000000 00[07C][07C] // 32x32 texture size
- 
- 
  26                   -> BB000001 FFFFFFFF // texture scale 1
  1A 50 50             -> E8000000 00000000 
                          F5101000 00014050 // colored 32x32 texture
-						 F2000000 0007C07C // 32x32 size
+                         F2000000 0007C07C // 32x32 size
  20 03 00 70          -> FD100000 05001800 // segment 5 texture address [03 * 0x800]
                          E8000000 00000000
-						 F5100000 07000000 // clear texture mode?
-						 E6000000 00000000
-						 F3000000 073FF100 loadblock?
+                         F5100000 07000000 // clear texture mode?
+                         E6000000 00000000
+                         F3000000 073FF100 loadblock?
  3E 00 00             -> 040030BF 04000000 // vertex info segment 04 (780 vertexes?)
  58 20 08 40 0C       -> B1000204 00000406 // "F3DEX_TRI2"?
  58 A4 18 C4 1C       -> B1080A0C 00080C0E // "F3DEX_TRI2"?
  58 28 29 48 2D       -> B1101214 00101416 // "F3DEX_TRI2"?
  2A                   -> B8000000 00000000 // end dl
  
- 26 -> BB000001 FFFFFFFF
- 1a -> E8000000 00000000 F5101000 00014050 F2000000 0007C07C
- 20 -> FD100000 05001800 E8000000 00000000 F5100000 07000000 E6000000 00000000 F3000000 073FF100
+ 26       -> BB000001 FFFFFFFF
+ 1a       -> E8000000 00000000 F5101000 00014050 F2000000 0007C07C
+ 20       -> FD100000 05001800 E8000000 00000000 F5100000 07000000 E6000000 00000000 F3000000 073FF100
  3e 0C 00 -> 040030BF 040000C0
  58
  58
  58
- 2a
- 2b
- 2b
+ 2a       -> B8000000 00000000
+ 
+ 2b 0e 00 -> 06000000 07000070
+ 2b 00 00 -> 06000000 07000000
  2a
  26 1a 20 3a 58 58 2a 2b 2a
  26
  
  
  801DFC94 list
+ 00270ED4 refs
  00270DF8 decompress
