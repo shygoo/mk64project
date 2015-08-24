@@ -64,6 +64,7 @@ int main(int argc, char* argv[]){
 	char output_filename_f3d[60];
 	char output_filename_mesh[60];
 	char output_filename_unk[60];
+	char output_filename_pdlist[60];
 	
 	mkdir(output_directory, 0700);
 	
@@ -73,10 +74,13 @@ int main(int argc, char* argv[]){
 		void* mio0_block_f3d  = &rom[SWAP32(entries[i].mio0_f3d_start)];
 		void* mio0_block_mesh = &rom[SWAP32(entries[i].mio0_mesh_start)];
 		void* block_unk       = &rom[SWAP32(entries[i].unk_start)];
+		u32 pdlist_addr = SWAP32(entries[i].mio0_mesh_start) + (SWAP32(entries[i].unk3) & 0x00FFFFFF);
+		void* pdlist = &rom[pdlist_addr];
 		
 		u32 decoded_f3d_size;
 		u32 decoded_mesh_size;
 		u32 raw_unk_size = SWAP32(entries[i].unk_end) - SWAP32(entries[i].unk_start);
+		u32 pdlist_size = SWAP32(entries[i].mio0_mesh_end) - pdlist_addr;
 		
 		void* decoded_f3d  = mio0decode(mio0_block_f3d, &decoded_f3d_size);
 		void* decoded_mesh = mio0decode(mio0_block_mesh, &decoded_mesh_size);
@@ -84,10 +88,12 @@ int main(int argc, char* argv[]){
 		sprintf(output_filename_f3d,  "%s\\%02d_%s_SEG06.bin\0",  output_directory, i, levelnames[i]);  
 		sprintf(output_filename_mesh, "%s\\%02d_%s_SEG04.bin\0", output_directory, i, levelnames[i]);  
 		sprintf(output_filename_unk,  "%s\\%02d_%s_REFS.bin\0",  output_directory, i, levelnames[i]);  
+		sprintf(output_filename_pdlist, "%s\\%02d_%s_SEG07.bin\0", output_directory, i, levelnames[i]);  
 		
 		writefile(output_filename_f3d,  decoded_f3d,  decoded_f3d_size);
 		writefile(output_filename_mesh, decoded_mesh, decoded_mesh_size);
 		writefile(output_filename_unk,  block_unk, raw_unk_size);
+		writefile(output_filename_pdlist, pdlist, pdlist_size);
 		
 		printf(
 			"%02d %-16s\n  F3D  %08X : %08X (mio0)\n  MESH %08X : %08X (mio0)\n  REFS %08X : %08X\n  1 %08X\n  2 %08X\n  3 %08X\n  4 %08X\n  5 %08X\n  6 %04X\n\n",
