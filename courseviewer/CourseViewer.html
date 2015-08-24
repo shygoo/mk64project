@@ -39,24 +39,22 @@
 				<div style="display:inline-block; vertical-align:top;">
 					<div style="background-color:#444;padding:4px;" id="loadedname">(No course loaded)</div>
 					<div id="container" style="display:inline-block;"></div>
+					<canvas id="textures" width="960" height="128" style="background-color:#000;border:1px solid #444;display:block"></canvas>
 				</div>
 			</div>
-			<canvas id="textures" width="1024" height="128" style="background-color:#000;border:1px solid #444;margin:5px;"></canvas>
 		</center>
 		<pre id="dbg"></pre>
 		<script src="three.min.js"></script>
 		<script src="shared.js"></script>
 		<script>
 			var tctx = document.getElementById("textures").getContext("2d");
-		
+			
 			var coursemenu = document.getElementById("coursemenu");
 			var loadedname = document.getElementById("loadedname");
 			var dbg = document.getElementById("dbg");
 			function log(s, nobr){
 				dbg.innerHTML += s + (nobr ? "" : "\n"); 
 			}
-			// file loaders:
-			//var s16data; // s16 array of last loaded file
 
 			var MAPNAMES = [
 				"Mario Raceway      ", 
@@ -82,6 +80,7 @@
 			];
 			
 			var MAPSTRUCTS = 0x122390;
+			var TEXTURES   = 0x641F70;
 			
 			var SEGMENT04;
 			var SEGMENT06;
@@ -163,17 +162,12 @@
 					courselink.onclick = function(){drawMap(this.mapId);}
 					courselink.appendChild(document.createTextNode(MAPNAMES[i]));
 					coursemenu.appendChild(courselink);
-					//log(JSON.stringify(map));
 				}
 				drawMap(0);
 			});
 			
-
-			
 			// Mesh classes:
 			function ItemBoxMesh(){
-				//var tdata = new Uint16Array([0xFFFF]);
-				//console.log(test_texturedata);
 				//var t = new THREE.DataTexture(test_texturedata, 32, 32, THREE.RGBAFormat, THREE.UnsignedShort5551Type);
 				//t.needsUpdate = true;
 				return new THREE.Mesh(
@@ -263,12 +257,6 @@
 				mesh.position.z = z || 0;
 				scene.add(mesh);
 				mesh.identity = meshes.push([cat || "", tag || "", mesh]) - 1;
-				//console.log(mesh.identity);
-			}
-			
-			function getPresetArray(levelnum, name){
-				var course_preset = document.getElementById("course-preset").selectedOptions[0];
-				return course_preset.getAttribute(name).split(",").map(function(x){return parseInt(x);});
 			}
 			
 			function drawCourseGeometry(segmentbuffer){ // course mesh
@@ -290,11 +278,9 @@
 			}
 			
 			function drawSeg06(segmentbuffer, mapId){ // just path and object positions for now
-				//console.log("drewseg6")
 				var s16data = Uint8ToInt16ArrayBE(segmentbuffer);
 				var LIST_END = -0x8000; // position lists end when an X coordinate is 0x8000 apparently
 
-				
 				var path_u = map_presets[mapId].path_u || [];
 				var path   = map_presets[mapId].path   || [];
 				var items  = map_presets[mapId].items  || [];
@@ -302,7 +288,6 @@
 				var trees  = map_presets[mapId].trees  || [];
 				var bushes = map_presets[mapId].bushes || [];
 				
-
 				// detailed paths:
 				pathcolors = [0x00FF00, 0xFF0000, 0xFFFF00, 0xFF00FF];
 				pathcolor_i = 0;
@@ -341,7 +326,7 @@
 						vertices[i*3 + 2] = vertexPositions[i][2];
 					}
 					geometry.addAttribute('position', new THREE.BufferAttribute(vertices, 3));
-					material = new THREE.PointCloudMaterial({color: path_ucolors[path_ucolor_i], size: 5});
+					material = new THREE.PointCloudMaterial({color: path_ucolors[path_ucolor_i], size: 10});
 					addmesh(new THREE.PointCloud(geometry, material), 0, 0, 0, "data", "path_u");
 					path_ucolor_i = (path_ucolor_i + 1) % 4;
 				});
@@ -373,7 +358,6 @@
 				for(var i = 0; i < meshes.length; i++){
 					if(meshes[i][0] == "object"){
 						var object_entry = document.createElement("div");
-						//object_entry.className = "object_entry";
 						object_entry.appendChild(document.createTextNode(meshes[i][1]));
 						object_entry.index = i;
 						object_entry.onmouseenter = function(){
@@ -404,6 +388,7 @@
 					}
 				}
 			}
+			
 			// draw single texture to tex canvas
 			function drawTexPreview(imgdata, x, y, width, height){
 				for(var i = 0; i < imgdata.length && ((i / width)|0) < height; i++){
@@ -417,6 +402,7 @@
 				}
 			}
 			
+			// draw all course textures to tex canvas
 			function drawSeg05Preview(mapId){
 				tctx.clearRect(0, 0, 1024, 128);
 				var mapdata = maps[mapId];
@@ -426,14 +412,14 @@
 				var x = 0;
 				var y = 0;
 				for(var i = 0; mio0_address = getU32BE(romdata, refs_start + i * 16); i++){
-					mio0_address = (mio0_address & 0x00FFFFFF) + 0x641F70;
+					mio0_address = (mio0_address & 0x00FFFFFF) + TEXTURES;
 					var tex_size = getU32BE(romdata, refs_start + i * 16 + 8);
 					var tdata = Uint8ToUint16ArrayBE(mio0decode(romdata, mio0_address));
 					var width = (tex_size == 2048) ? 32 : 64;
 					var height = 32;
 					drawTexPreview(tdata, x, y, width, height);
 					x += width;
-					if(x >= 1024){
+					if(x >= 960){
 						y += 32;
 						x = 0;
 					}
@@ -444,12 +430,10 @@
 			
 			function drawMap(mapId){
 				drawSeg05Preview(mapId);
-				//console.log("drewmap");
 				scene = new THREE.Scene();
 				meshes = [];
 				resetCamera();
 				var mapdata = maps[mapId];
-				
 				var presets = map_presets[mapId];
 				if(presets){
 					var seg06 = mio0decode(romdata, mapdata.ASSETS_START);
@@ -460,7 +444,6 @@
 				var seg04 = mio0decode(romdata, mapdata.MESH_START);
 				drawCourseGeometry(seg04);
 				loadedname.innerHTML = MAPNAMES[mapId];
-				//console.log(test);
 			}
 			
 			function resetCamera(){
@@ -482,15 +465,13 @@
 				88: function(){ camera.translateY( 10); }, // x - move up
 				40: function(){ camera.rotateX( -0.05); }, // down - rotate down
 				38: function(){ camera.rotateX(  0.05); }, // up - rotate up
-				37: function(){ camera.rotateY(  0.05); }, // left - rotate left
-				39: function(){ camera.rotateY( -0.05); }  // right - rotate right
+				37: function(){ camera.rotateY(  0.05); camera.rotation.z = 0;}, // left - rotate left
+				39: function(){ camera.rotateY( -0.05); camera.rotation.z = 0;}  // right - rotate right
 			};
 			
 			var keysdown = [];
 			document.body.onkeydown = function(e){
-				//e.preventDefault();
 				keysdown[e.keyCode] = true;
-				//console.log(e);
 			}
 			document.body.onkeyup = function(e){
 				delete keysdown[e.keyCode];
