@@ -1,6 +1,6 @@
 MK64 (U) hacking doc
 by shygoo
-Aug 23 2015
+Aug 24 2015
 ______________________________________________________
 
 ROM/RAM map
@@ -38,7 +38,8 @@ DATA 122390 802B8D80 Course data reference table
      ?????? 802BA274 Index for packed dlist commands
      12A1F0 ???????? Ascii text bank (credits)
      132B50 -------- First MIO0 block
-     641F70 -------- An MIO0 bank (exclusively segment 05 course textures?)
+	 145470 -------- Kart texture and palette bank
+     641F70 -------- Course texture bank
      712DC0 -------- An MIO0 bank
      7FA3C0 -------- TKMK00 bank
      820FC0 -------- Last TKMK block in ROM
