@@ -34,11 +34,11 @@ CODE ?????? 8029D584 Place x with segment 06 offset
      ?????? 802A9AF4 Display list unpacker (A0 = segmented address of packed dlist, A1 = length)
      ?????? 802AA918 Course data main loader 
 DATA 122390 802B8D80 Course data reference table
-     1232A4 802B9C94 Jump table for segment 7 display list unpacking?
+     1232A4 802B9C94 Jump table for segment 7 display list unpacking
      ?????? 802BA274 Index for packed dlist commands
      12A1F0 ???????? Ascii text bank (credits)
      132B50 -------- First MIO0 block
-	 145470 -------- Kart texture and palette bank
+     145470 -------- Kart texture and palette bank
      641F70 -------- Course texture bank
      712DC0 -------- An MIO0 bank
      7FA3C0 -------- TKMK00 bank
@@ -53,18 +53,18 @@ RAM segments table (80150258)
  00 General purpose, always 0x00000000
  01 ?
  02 ?
- 03 Common textures? (billboard tree images, ??)
+ 03 Common textures
  04 Course mesh, for both collisions and graphics
  05 Course textures
  06 Some display lists, item box placements, path data
- 07 Generated (?) display lists which reference the course mesh data
+ 07 Generated display lists which reference the course mesh data
  08 ?
- 09 ?
+ 09 Texture list and segment 06 display list jump table is loaded here
  0A ?
  0B ?
  0C ?
  0D ?
- 0F Buffer for course mesh MIO0/packed dlists || Course collisions table (44 byte entries)
+ 0F Temporary buffer for course mesh MIO0 and packed dlists || Course collisions table (44 byte entries)
 
 Course data reference table (122390 / 802B8D80)
  This table references course display lists, vertex data, textures, object placements; each entry is 0x30 bytes:
@@ -93,12 +93,12 @@ Course data reference table (122390 / 802B8D80)
 +---0x00: 008284D0 0082B620 // MIO0 block containing display lists, item box placements, path data, and ??; decoded to segment 06
 |+--0x08: 0088FA10 0089B510 // Copied to segment 0F - MIO0 block of course vertex data (gfx & collisions); decoded to segment 04, followed by packed display list, decoded to segment 07
 ||+-0x10: 0088CD70 0088D070 // Course texture MIO0 block references (segment 05), segment 06 display list references
-||| 0x18: 0F000000 // segment
+||| 0x18: 0F000000 // Segment to load vertex data and packed dlists pre-decompression/unpacking ?
 ||| 0x1C: 0000167D // ? (gets multiplied by 24 at some point)
-||| 0x20: 0F0096F4 // segment offset of packed display list (unpacked to segment 7)
-||| 0x24: 00006930 // ?
-||| 0x28: 09000000 // another segment?
-||| 0x2C: 0000     // ?
+||| 0x20: 0F0096F4 // Segment offset of packed display list (unpacked to segment 7)
+||| 0x24: 00006930 // Segment 7 unpacked dlist size?
+||| 0x28: 09000000 // Segment to load texture list and dlist jump table?
+||| 0x2C: 0000     // ? 0000 or 0001
 ||| 0x2E: ----     // struct padding, unused
 |||  
 ||+-> Reference structure (16 bytes each): // related function 802A85CC
@@ -123,6 +123,8 @@ Course data reference table (122390 / 802B8D80)
  802AA918 Function called to load a course's assets using the course data table
   800DC5A0 holds the current course selection ID, which is passed to this function
   
+______________________________________________________
+
 Segment 0F collision structure
 
  0x00 u16 ?
@@ -142,55 +144,30 @@ Segment 0F collision structure
  0x24 float ?
  0x28 float ?
  
-  Collision attributes:
-   0x00 ?
-   0x01 Asphalt
-   0x02 Slightly bumpy
-   0x03 Dirt
-   0x04 ?
-   0x05 Snow?
-   0x06 ?
-   0x07 Sand?
-   0x08 Grass (slows kart)
-   0x09 Ice (creates reflection)
-   0x0A Dirt?
-   0x0B Snow?
-   0x0C ?
-   0x0D Clay? (red dust)
-   0x0E Railroad tracks (creates sound)
-   0x0F ?
-   0x10 Bumpy (creates sound)
-   0x11 Bumpy (creates sound)
-   0x12 ?
-   0x13 ?
-   0x14 ?
-  
-  (check 802AE9D0)
-  
-______________________________________________________
-
-Current character selection (8018EDE4 [P1 P2 P3 P4]) (8018EDE8 [P1 P2 P3 P4] confirmations)
- None     00
- Mario    01
- Luigi    02
- Peach    03
- Toad     04
- Yoshi    05
- DK       06
- Wario    07
- Bowser   08
-
-Player count selection (8018EDF0)
- 1P Game  01
- 2P Game  02
- 3P Game  03
- 4P Game  04
-
-Game-mode selection (800DC53C)
- Mario GP 00000000
- T.Trials 00000001
- VS       00000002
- Battle   00000003
+ Collision attributes:
+  0x00 ?
+  0x01 Asphalt
+  0x02 Slightly bumpy
+  0x03 Dirt
+  0x04 ?
+  0x05 Snow?
+  0x06 ?
+  0x07 Sand?
+  0x08 Grass (slows kart)
+  0x09 Ice (creates reflection)
+  0x0A Dirt?
+  0x0B Snow?
+  0x0C ?
+  0x0D Clay? (red dust)
+  0x0E Railroad tracks (creates sound)
+  0x0F ?
+  0x10 Bumpy (creates sound)
+  0x11 Bumpy (creates sound)
+  0x12 ?
+  0x13 ?
+  0x14 ?
+ 
+ (check 802AE9D0)
 ______________________________________________________
  
 800EF868 / F0468 Ascii text bank
@@ -238,12 +215,6 @@ Objects/behavior related
 ______________________________________________________
 Other notes
  TKMK00 blocks seem to only contain image data for the background on startup, and startup selection screens
- 
- 800F69A4 P1 X float
- 800F69A8 P1 Y float
- 800F69AC P1 Z float
- 800F69be P1 rotation s16
-
  800BC360 m64 related code
   
 Todo:
@@ -253,6 +224,4 @@ Todo:
  Find course m64 references
  Find course object placement method
  Find what 0x18:0x2C in course data table are for
- Find how segment 05 is filled (course textures)
- Find how segment 07 f3d is generated
  Find what 8029D584 function does
