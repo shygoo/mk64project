@@ -1,0 +1,29 @@
+Current character selection (8018EDE4 [P1 P2 P3 P4]) (8018EDE8 [P1 P2 P3 P4] confirmations)
+ None     00
+ Mario    01
+ Luigi    02
+ Peach    03
+ Toad     04
+ Yoshi    05
+ DK       06
+ Wario    07
+ Bowser   08
+
+Player count selection (8018EDF0)
+ 1P Game  01
+ 2P Game  02
+ 3P Game  03
+ 4P Game  04
+
+Game-mode selection (800DC53C)
+ Mario GP 00000000
+ T.Trials 00000001
+ VS       00000002
+ Battle   00000003
+ 
+ 
+During race
+800F69A4 P1 X float
+800F69A8 P1 Y float
+800F69AC P1 Z float
+800F69be P1 rotation s16
