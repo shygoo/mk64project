@@ -1,0 +1,117 @@
+<style>
+body{background-color:#444;}
+#blocks{cursor: default;}
+#blocks div:hover{background-color:#FDD;}
+</style>
+<body>
+ROM: <input type="file" id="romfile"><br>
+Palette: <select id="palettes">
+	<option>1E006C Luigi </option>
+	<option>2728A0 Mario </option>
+	<option>309DC8 Yoshi </option>
+	<option>39DF38 Peach </option>
+	<option>43B25C Wario </option>
+	<option>4CBCC8 Toad  </option>
+	<option>57DCE4 DK    </option>
+	<option>63E0F8 Bowser</option>
+</select>
+width: <input type="text" value="64" onkeyup="window.width = this.value; draw();">
+height: <input type="text" value="64" onkeyup="window.height = this.value; draw();">
+xscale: <input type="text" value="1.0" onkeyup="window.xscale = this.value; draw();">
+yscale: <input type="text" value="1.0" onkeyup="window.yscale = this.value; draw();">
+<br><br>
+<canvas id="canvas" style="background-color:#000;" width="512" height="512"></canvas>
+<div id="blocks" style="height:400px; overflow: auto; display: inline-block; vertical-align:top; width: 100px;border:1px solid #000;margin:0px;font: 10px Consolas;"></div>
+<script src="shared.js"></script>
+<script>
+var blocks = document.getElementById("blocks");
+var palette_selection = document.getElementById("palettes");
+var curaddr = 0x001A0EE4;
+var ploc;
+
+palette_selection.selectedIndex = 0;
+
+palette_selection.onchange = function(){
+	draw(curaddr);
+}
+
+var wheel_ploc = 0x1BBEEC; // there are a bunch of these in rom, this is the first one
+
+var palettes = [
+	0x1E006C,  //Luigi  
+	0x2728A0,  //Mario  
+	0x309DC8,  //Yoshi
+	0x39DF38,  //Peach  
+	0x43B25C,  //Wario  
+	0x4CBCC8,  //Toad   
+	0x57DCE4,  //DK     
+	0x63E0F8,  //Bowser 
+];
+
+var romdata;
+var imgdata = []; // Uint8Array
+var palettedata = []; // Uint16Array
+var canvas = document.getElementById("canvas");
+var ctx = document.getElementById("canvas").getContext("2d");
+var width  = 64;
+var height = 64;
+var xscale = 1.0;
+var yscale = 1.0;
+
+function draw(addr){
+	ctx.clearRect(0, 0, 512, 512);
+	curaddr = addr;
+	ploc = palettes[palette_selection.selectedIndex];
+	imgdata = new Uint8Array(mio0decode(romdata, curaddr));
+	if(imgdata.length > 4096){
+		console.log("toobig");
+		return;
+	}
+	for(var i = 0; i < imgdata.length && ((i / width)|0) < height; i++){
+		var pixel = getU16BE(romdata, (imgdata[i] < 0xC0) ? (ploc + imgdata[i] * 2) : (wheel_ploc + imgdata[i] * 2 - 0x180));
+		var r = ((pixel & 0xF800) >> 11) << 3;
+		var g = ((pixel & 0x07C0) >>  6) << 3;
+		var b = ((pixel & 0x003E) >>  1) << 3;
+		var a = pixel & 1;
+		ctx.fillStyle = "rgba(" + r + ", " + g + ", " + b + ", " + a + ")";
+		ctx.fillRect((i % width) * xscale, ((i / width)|0) * yscale, xscale, yscale);
+	}
+}
+
+var MIO0MAGIC = 0x4D494F30;
+var mio0map = [];
+
+BinInput("romfile", function(result){
+	htm = "";
+	romdata = new Uint8Array(result);
+	for(var i = 0; i < romdata.length; i+=4){
+		var WORD = getU32BE(romdata, i);
+		if(WORD == MIO0MAGIC){
+			mio0map.push(i);
+			htm += "<div onclick=\"draw(parseInt(this.innerHTML))\">0x00" + i.toString(16) + "</div>";
+		}
+	}
+	blocks.innerHTML = htm;
+	draw(mio0map[1]);
+	play();
+});
+
+var index = 1;
+function play(){
+	setInterval(function(){
+		if(mio0map[index] < 0x641F70){
+			if(mio0map[index] - palettes[palette_selection.selectedIndex] > 0x180){
+				palette_selection.selectedIndex++;
+			}
+			draw(mio0map[index]);
+			index++;
+			
+		} else {
+			index = 1;
+			palette_selection.selectedIndex = 0;
+		}
+	}, 34);
+}
+
+</script>
+</body>
