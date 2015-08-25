@@ -83,49 +83,41 @@ function Uint8ToUint16ArrayBE(src){
 }
 
 // mio0 decoder
-function mio0decode(/*Uint8Array*/ src, src_offset){
+function mio0decode(/*Uint8Array*/ src, srcOffset){
 	var dest = [];
-	var target_size = getU32BE(src, src_offset + 0x04);
-	var offset1 = getU32BE(src, src_offset + 0x08);
-	var offset2 = getU32BE(src, src_offset + 0x0C);
-	var offset0 = 0x10;
-	var t2 = 0;
-	var t3 = 0;
-	var t1 = 0;
-	var t0 = 0;
-	var bit = 0;
-	for(var i = 0; i < target_size;){
-		if(bit == 0){
-			t0 = getS32BE(src, src_offset + offset0);
-			bit = 32;
-			offset0 += 4;
+	var destLen = getU32BE(src, srcOffset + 0x04);
+	var controlPos = 0x10; // control bits section
+	var dictPos = getU32BE(src, srcOffset + 0x08); // dictionary section
+	var dataPos = getU32BE(src, srcOffset + 0x0C); // data section
+	var controlBits = 0;
+	var controlExaust = 0;
+	for(var destPos = 0; destPos < destLen;){
+		if(!controlExaust){ // current controlPos bitfield is exhausted, load next
+			controlBits = getS32BE(src, srcOffset + controlPos);
+			controlExaust = 32;
+			controlPos += 4;
 		}
-		if(t0 >= 0){
-			t2 = getU16BE(src, src_offset + offset1);
-			offset1 += 2;
-			t3 = t2 >> 12;
-			t2 &= 0x0FFF;
-			t1 = i - t2;
-			t3 += 3;
-			while(t3 != 0){
-				t2 = dest[t1 - 1];
-				t3--;
-				t1++;
-				dest[i] = t2;
-				i++;
+		if(controlBits >= 0){ // if upper bit of controlPos word is unset, use dictionary to copy data:
+			var dictPair = getU16BE(src, srcOffset + dictPos);
+			var length = (dictPair >> 12) + 3; // upper 4 bits + 3 = length (match maxlength = 18, minlength = 3)
+			var relOffset = destPos - (dictPair & 0x0FFF) - 1; // index - lower 12 bits (relative negative offset of data to copy + 1)
+			for(var j = 0; j < length; j++){
+				dest[destPos] = dest[relOffset];
+				relOffset++;
+				destPos++;
 			}
-		} else {
-			t2 = src[src_offset + offset2];
-			offset2++;
-			dest[i] = t2;
-			i++;
+			dictPos += 2;
+		} else { // upper bit of controlPos is 1, copy single byte from dataPos
+			var u8 = src[srcOffset + dataPos];
+			dataPos++;
+			dest[destPos] = u8;
+			destPos++;
 		}
-		t0 <<= 1;
-		bit--;
+		controlBits <<= 1; // next bit
+		controlExaust--;
 	}
 	return dest;
 }
-
 
 // array swap conversions:
 function Uint16ArrayBE(arg){ // LE u16 array -> BE u16 array
