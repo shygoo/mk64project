@@ -1,0 +1,44 @@
+Each kart palette is 0x180 bytes, each wheel palette is 0x80 bytes
+321 kart textures per character
+
+Luigi:
+145470 texture bank
+?????? wheel palettes
+1E006C kart palette
+
+Mario: 
+1E01F0 texture bank
+?????? wheel palettes
+2728A0 kart palette
+
+Yoshi:
+272A20 texture bank
+?????? wheel palettes
+309DC8 kart palette
+
+Peach: 
+309F50 texture bank
+?????? wheel palettes
+39DF38 kart palette
+
+Wario:
+39E0C0 texture bank
+?????? wheel palettes
+43B25C kart palette
+
+Toad:
+43B3E0 texture bank
+?????? wheel palettes
+4CBCC8 kart palette
+
+DK:
+4CBE50 textures bank
+?????? wheel palettes
+57DCE4 kart palette
+
+Bowser:
+57DE70 texture bank
+?????? wheel palettes
+63E0F8 kart palette
+
+641F70 end of kart texture data, start of course texture data
