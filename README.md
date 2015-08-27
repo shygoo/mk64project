@@ -8,7 +8,7 @@ Level data and all MIO0 files will be extracted to the created directory `mk64du
 
 ![Screenshot](screenshot.png)
 
-To run the course viewer in [node-webkit](http://nwjs.io/) with `_CourseViewerNW.bat`, change NWPATH to the path of your node-webkit executable (nw.exe).
+To run the course viewer in [node-webkit](http://nwjs.io/) with `_CourseViewerNW.bat`, change `NWPATH` to the path of your node-webkit executable (nw.exe).
 
 #####Kart Viewer: ([web demo](http://54.148.172.211/courseviewer/KartViewer.html))
 
