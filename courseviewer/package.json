@@ -1,0 +1,24 @@
+// Manifest for node-webkit port
+{
+  "main":        "CourseViewer.html",
+  "name":        "MK64 Course Viewer",
+  "description": "MK64 Course Viewer - node-webkit port",
+  "version":     "0.1.0",
+  "keywords":  [ "demo", "node-webkit" ],
+  "window": {
+    "title":      "MK64 Course Viewer",
+//  "icon":       "link.png",
+    "toolbar":     false,
+    "frame":       true,
+    "width":       1200,
+    "height":      850,
+    "position":   "mouse",
+    "min_width":   1200,
+    "min_height":  850,
+    "max_width":   1200,
+    "max_height":  850
+  },
+  "webkit": {
+    "plugin":     true
+  }
+}
