@@ -80,10 +80,14 @@
 			];
 			
 			var MAPSTRUCTS = 0x122390;
-			var TEXTURES   = 0x641F70;
+			var BANK_TEXTURES   = 0x641F70;
 			
-			var SEGMENT04;
-			var SEGMENT06;
+			// load data here
+			var SEG03_COMTEX; // common textures
+			var SEG04_VERTS;  // vertices
+			var SEG05_TEX;    // course textures
+			var SEG06_ASSETS; // assets/dlist
+			var SEG07_DLIST;  // packed dlist
 			
 			var maps = [];
 			
@@ -149,12 +153,18 @@
 				romdata = new Uint8Array(result);
 				for(var i = 0; i < 16; i++){
 					var map = {
-						ASSETS_START : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x00),
-						ASSETS_END   : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x04),
-						MESH_START   : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x08),
-						MESH_END     : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x0C),
-						REFS_START   : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x10),
-						REFS_END     : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x14),
+						ASSETS_START : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x00), //--seg6; object placements, path data, some display lists
+						ASSETS_END   : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x04), //_/
+						MESH_START   : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x08), //--vertices and packed dlist
+						MESH_END     : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x0C), //_/ 
+						REFS_START   : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x10), //--image course texture mio0 bank addresses & seg6 dlist refs
+						REFS_END     : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x14), //_/
+						SEG_MESH     : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x18), //--temp buffer for verts/packed dlist, not needed here
+						UNKNOWN_A    : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x1C), //--??
+						DLIST_ADDR   : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x20), //--segmented address of packed dlist
+						DLIST_SIZE   : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x24), //--probably the size of the dlist when unpacked (unchecked)
+						SEG_REFS     : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x28), //--probably the segment number for REFS (tex table & seg6 refs) (unchecked)
+						UNKNOWN_B    : getU16BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x2C)  //--??
 					}
 					maps.push(map);
 					var courselink = document.createElement("div");
@@ -165,6 +175,44 @@
 				}
 				drawMap(0);
 			});
+			
+			// Display list:
+			var dl_data;
+			var dl_pos = 0; // display list command index
+			var dl_vbuf; // copy seg4 sections here with 0x3E command
+			var dl_cmds = {
+				0x26: [1, function(){ // img_scale
+					console.log("img_scale");
+				}],
+				0x1A: [3, function(){ // img_size
+					console.log("img_size");
+				}],
+				0x20: [4, function(){ // img_load
+					console.log("img_load");
+				}],
+				0x3E: [3, function(){ // verts_load
+					console.log("verts_load");
+				}],
+				0x58: [5, function(){ // draw_tri2
+					dl_data[dl_pos + 1];
+					console.log("draw_tri2");
+				}],
+				0x2A: [1, function(){ // end
+					console.log("end");
+					// add current mesh to scene
+				}],
+				0x2B: [3, function(){ // jump
+					console.log("jump");
+				}]
+			};
+			function dl_exec(dl){
+				dl_data = dl;
+				for(var i = 0; i < 8; i++){
+					var cmd = dl_cmds[dl_data[dl_pos]];
+					cmd[1]();
+					dl_pos += cmd[0];
+				}
+			}
 			
 			// Mesh classes:
 			function ItemBoxMesh(){
@@ -259,22 +307,40 @@
 				mesh.identity = meshes.push([cat || "", tag || "", mesh]) - 1;
 			}
 			
-			function drawCourseGeometry(segmentbuffer){ // course mesh
-				var s16data = Uint8ToInt16ArrayBE(segmentbuffer);
-				var geometry = new THREE.BufferGeometry();
-				var vertexPositions = [];
-				for(var i = 0; i < s16data.length; i += 7){
-					vertexPositions.push([s16data[i+0], s16data[i+1], s16data[i+2]]);
+			function drawCourseGeometry(segmentbuffer, dlist, mapId){ // course mesh
+				SEG04_VERTS = new Uint8ToInt16ArrayBE(segmentbuffer);
+				SEG05_TEX   = new Uint16Array(0x40000); // not sure how much the game allocates but this should be sufficient
+				var tex_offset = 0;
+				var refs_start = maps[mapId].REFS_START & 0x00FFFFFF;
+				var mio0_address;
+				for(var i = 0; mio0_address = getU32BE(romdata, refs_start + i * 16); i++){
+					mio0_address = BANK_TEXTURES + (mio0_address & 0x00FFFFFF);
+					console.log(tex_size);
+					var tex_size = getU32BE(romdata, refs_start + i * 16 + 8);
+					var tdata = Uint8ToUint16ArrayBE(mio0decode(romdata, mio0_address));
+					console.log(tdata);
+					for(var j = 0; j < tdata.length; j++){
+						SEG05_TEX[tex_offset + j] = tdata[j];
+						//console.log("test");
+					}
+					tex_offset += tex_size / 2;
 				}
-				var vertices = new Float32Array(vertexPositions.length * 3);
-				for (var i = 0; i < vertexPositions.length; i++){
-					vertices[i*3 + 0] = vertexPositions[i][0];
-					vertices[i*3 + 1] = vertexPositions[i][1];
-					vertices[i*3 + 2] = vertexPositions[i][2];
-				}
-				geometry.addAttribute('position', new THREE.BufferAttribute(vertices, 3));
-				var material = new THREE.MeshBasicMaterial({color: 0x666666, wireframe: true});
-				addmesh(new THREE.Mesh(geometry, material));
+				dl_exec(dlist);
+				console.log("bad mesh render disabled, starting dlist implementation");
+				//var geometry = new THREE.BufferGeometry();
+				//var vertexPositions = [];
+				//for(var i = 0; i < s16data.length; i += 7){
+				//	vertexPositions.push([s16data[i+0], s16data[i+1], s16data[i+2]]);
+				//}
+				//var vertices = new Float32Array(vertexPositions.length * 3);
+				//for (var i = 0; i < vertexPositions.length; i++){
+				//	vertices[i*3 + 0] = vertexPositions[i][0];
+				//	vertices[i*3 + 1] = vertexPositions[i][1];
+				//	vertices[i*3 + 2] = vertexPositions[i][2];
+				//}
+				//geometry.addAttribute('position', new THREE.BufferAttribute(vertices, 3));
+				//var material = new THREE.MeshBasicMaterial({color: 0x666666, wireframe: true});
+				//addmesh(new THREE.Mesh(geometry, material));
 			}
 			
 			function drawSeg06(segmentbuffer, mapId){ // just path and object positions for now
@@ -407,12 +473,12 @@
 				tctx.clearRect(0, 0, 1024, 128);
 				var mapdata = maps[mapId];
 				var refs_start = mapdata.REFS_START & 0x00FFFFFF;
-				console.log(getU32BE(romdata, refs_start));
+				//console.log(getU32BE(romdata, refs_start));
 				var mio0_address;
 				var x = 0;
 				var y = 0;
 				for(var i = 0; mio0_address = getU32BE(romdata, refs_start + i * 16); i++){
-					mio0_address = (mio0_address & 0x00FFFFFF) + TEXTURES;
+					mio0_address = (mio0_address & 0x00FFFFFF) + BANK_TEXTURES;
 					var tex_size = getU32BE(romdata, refs_start + i * 16 + 8);
 					var tdata = Uint8ToUint16ArrayBE(mio0decode(romdata, mio0_address));
 					var width = (tex_size == 2048) ? 32 : 64;
@@ -442,7 +508,9 @@
 					log("Skipped seg06, no preset list for this course available ("+mapId+")")
 				}
 				var seg04 = mio0decode(romdata, mapdata.MESH_START);
-				drawCourseGeometry(seg04);
+				var dlist = romdata.slice(mapdata.MESH_START + (mapdata.DLIST_ADDR & 0xFFFFFF), mapdata.MESH_END);
+				drawCourseGeometry(seg04, dlist, mapId);
+				console.log(dlist);
 				loadedname.innerHTML = MAPNAMES[mapId];
 			}
 			
