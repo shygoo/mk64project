@@ -1,3 +1,6 @@
+list from zoinkity http://pastebin.com/raw.php?i=QMfNHWA2
+
+
 'packed' display lists
  ?????? 802A9AF4 Display list unpacker (A0 = segmented address of packed dlist, A1 = length)   ; always somewhere in segment 0F (0x20,0x24 in course structs)  
  1232A4 802B9C94 Jump table for packed display list commands
@@ -138,11 +141,11 @@ mario raceway conversion 801DFC94 -> 80270DF8
                    E8000000 00000000 // ?
                    F5100000 07000000 // clear texture mode?
                    E6000000 00000000 // ?
-                   F3000000 073FF100 // loadblock?
- 3E 00 00       -> 040030BF 04000000 // vertex info segment 04 (12 verteces)
- 58 20 08 40 0C -> B1000204 00000406 // F3DEX_TRI2 (00,02,04)(00,04,06)
+                   F3000000 073FF100 // loadblock
+ 3E 00 00       -> 040030BF 04000000 // load vertex info from segment 04 (12 vertices, (0xBF+1)/16); dunno what the 30 is
+ 58 20 08 40 0C -> B1000204 00000406 // F3DEX_TRI2 (00,02,04)(00,04,06) -- [00 02 04 06]
  58 A4 18 C4 1C -> B1080A0C 00080C0E // F3DEX_TRI2 (08,0A,0C)(08,0C,0E)
- 58 28 29 48 2D -> B1101214 00101416 // F3DEX_TRI2 (10,12,14)(10,14,16)
+ 58 28 29 48 2D -> B1101214 00101416 // F3DEX_TRI2 (10,12,14)(10,14,16)  // 12 vertices in all
  2A             -> B8000000 00000000 // end dl
  
  26       -> BB000001 FFFFFFFF
@@ -186,20 +189,14 @@ mario raceway conversion 801DFC94 -> 80270DF8
  
 tri2
 
-58 20 08 40 0C -> B1000204 00000406 // F3DEX_TRI2 (00, 02, 04),(00, 04, 06)
- 2008400C
- 0010 0 0000 00 0100 0 0100 0 0000 00 0110 0
- 02     00      04     04     00      06
- 
-58 A4 18 C4 1C -> B1080A0C 00080C0E // F3DEX_TRI2 (08, 0A, 0C),(08  0C, 0E)
- A418C41C
- 1010 0 1000 00 1100 0 1100 0 1000 00 1110 0
- 0A     08      0C     0C     08      0E
-               
-58 28 29 48 2D -> B1101214 00101416 // F3DEX_TRI2 (10, 12, 14),(10, 14, 16)
- 2829482D
- 0010 1000 0010 1001 0100 1000 0010 1101
- 0010 1 0000 01 0100 1 0100 1 0000 01 0110 1  unchecked
- 02   | 00    | 04   | 04   | 00    | 06   |
- 12---+ 10----+ 14---+ 14---+ 10----+ 16---+
- trailing 1 = add 0x10 ?
+ [001][01][000] 0 [01][010][01]  [010][01][000]0[01][011][01]
+                            |     |    |   |   | |   |    |
+                            |     |    |   |   | |   |    t1v1 upper nibble
+                            |     |    |   |   | |   t1v2 lower nibble >> 1
+                            |     |    |   |   | t1v2 upper nibble
+                            |     |    |   |   unused bit
+                            |     |    |   t1v0 lower nibble >> 1
+                            |     |    t1v0 upper nibble
+                            |     t1v1 lower nibble >> 1
+				            t0v1 upper nibble
+							
