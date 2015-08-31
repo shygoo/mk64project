@@ -113,18 +113,20 @@ Course data reference table (122390 / 802B8D80)
 ||     At the end of the MIO0 block reference list there are 16 bytes of null padding followed by a list of segmented addresses referencing display lists in segment 06
 ||
 |+--> Mesh vertex structure:
-|      ROM (14 bytes):    RAM (16 bytes):
-|      0x00: s16 Vx       0x00: s16 Vx
-|      0x02: s16 Vy       0x02: s16 Vy
-|      0x04: s16 Vz       0x04: s16 Vz
-|      0x06: s16 U        0x06: u16 (unused?)
-|      0x08: s16 V        0x08: s16 U
-|      0x0A: ?            0x0A: s16 V
-|      0x0C: ?            0x0C: u8  R
-|                         0x0D: u8  G
-|                         0x0E: u8  B
-|                         0x0F: u8  A
+|      ROM (14 bytes): | RAM (16 bytes):
+|       0x00: s16 Vx   |  0x00: s16 Vx
+|       0x02: s16 Vy   |  0x02: s16 Vy
+|       0x04: s16 Vz   |  0x04: s16 Vz
+|       0x06: s16 U    |  0x06: u16 ?
+|       0x08: s16 V    |  0x08: s16 U
+|       0x0A: ?        |  0x0A: s16 V
+|       0x0B: ?        |  0x0C: u8  R
+|       0x0C: ?        |  0x0D: u8  G
+|       0x0D: ?        |  0x0E: u8  B
+|                      |  0x0F: u8  A
 |
+|       Looks like a,b,c,d (rom) are the vertex color channels but the data differs slightly in ram, code should be checked
+|    
 +---> Offsets for segment 6 assets are hardcoded
 
  802AA918 Function called to load a course's assets using the course data table
@@ -225,6 +227,8 @@ Other notes
  800BC360 m64 related code
   
 Todo:
+ Check on vertex color rom -> ram change
+ Find where collision data comes from
  Collect all hardcoded segment 06 pointers
  Draft "course script" engine to replace the hardcoded stuff
  Add parameter to course table for optional raw display list
