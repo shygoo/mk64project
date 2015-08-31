@@ -79,8 +79,8 @@
 				"Big Donut          ",
 			];
 			
-			var MAPSTRUCTS = 0x122390;
-			var BANK_TEXTURES   = 0x641F70;
+			var MAPSTRUCTS    = 0x122390;
+			var BANK_TEXTURES = 0x641F70;
 			
 			// load data here
 			var SEG03_COMTEX; // common textures
@@ -176,51 +176,140 @@
 				drawMap(0);
 			});
 			
-			// Display list:
-			var dl_data;
+			// mk64-proprietary display list test rendering
+			// todo parse to regular dlist before rendering
+			var dl_data = [];
 			var dl_pos = 0; // display list command index
-			var dl_vbuf; // copy seg4 sections here with 0x3E command
+			var dl_vbuf = new THREE.Geometry(); // THREE.Geometry object - copy seg4 sections here via vert commands
+			var dl_uvbuf = []; // push UV mapping coordinates here when vbuf is loaded, for face commands
+			var dl_tex = [];
 			var dl_cmds = {
-				0x26: [1, function(){ // img_scale
-					console.log("img_scale");
-				}],
-				0x1A: [3, function(){ // img_size
-					console.log("img_size");
-				}],
+				0x15: [1, function(){}], // cc
+				0x16: [1, function(){}], // cc
+				0x17: [1, function(){}], // cc
+				0x18: [1, function(){}], // setothermode_low
+				0x19: [1, function(){}], // setothermode_low
+				0x1A: [3, function(){}], // img32x32_5551
+				0x1B: [3, function(){}], // img32x64_5551
+				0x1C: [3, function(){}], // img64x32_5551
+				0x1D: [3, function(){}], // ia16 32x32
+				0x1E: [3, function(){}], // ia16 32x64
+				0x1F: [3, function(){}], // ia16 64x32
 				0x20: [4, function(){ // img_load
-					console.log("img_load");
+					//console.log("img_load32x32");
+					var offset = dl_data[dl_pos + 1] * 0x400;
+					dl_tex = SEG05_TEX.slice(offset, offset + 0x400);
 				}],
-				0x3E: [3, function(){ // verts_load
-					console.log("verts_load");
+				0x21: [4, function(){ // img_load
+					//console.log("img_load32x64");
+					var offset = dl_data[dl_pos + 1] * 0x400;
+					dl_tex = SEG05_TEX.slice(offset, offset + 0x400);
+					//console.log(getU32BE(dl_data, dl_pos).toString(16));
 				}],
+				0x22: [4, function(){ // img_load
+					//console.log("img_load64x32");
+					var offset = dl_data[dl_pos + 1] * 0x400;
+					dl_tex = SEG05_TEX.slice(offset, offset + 0x400);
+					//console.log(getU32BE(dl_data, dl_pos).toString(16));
+				}],
+				0x23: [4, function(){ // img_load ia16 32 32
+					//console.log("img_load64x32");
+					var offset = dl_data[dl_pos + 1] * 0x400;
+					dl_tex = SEG05_TEX.slice(offset, offset + 0x400);
+					//console.log(getU32BE(dl_data, dl_pos).toString(16));
+				}],
+				0x24: [4, function(){ // img_load
+					//console.log("img_load32x64 ia16");
+					var offset = dl_data[dl_pos + 1] * 0x400;
+					dl_tex = SEG05_TEX.slice(offset, offset + 0x400);
+					//console.log(getU32BE(dl_data, dl_pos).toString(16));
+				}],
+				0x26: [1, function(){ // img_scale
+					//console.log("img_scale1");
+				}],
+				0x27: [1, function(){ // img_scale
+					//console.log("img_scale0");
+				}],
+				0x28: [5, function(){}], // load x vertices
+				0x29: [3, function(){ // tri1
+					//console.log("tri1");
+					var hi16 = getU16BE(dl_data, dl_pos + 1);
+					t0 = [];
+					t0[0] = ((hi16 & 0x1800) >> 7) | ((hi16 & 0x0700) >> 7);
+					t0[1] = ((hi16 & 0x0003) << 4) | ((hi16 & 0xE000) >> 12);
+					t0[2] = ((hi16 & 0x0060) >> 1) | ((hi16 & 0x001C) >> 1);
+					dl_vbuf.faces.push(new THREE.Face3(t0[0]/2, t0[1]/2, t0[2]/2));
+				}],
+				0x2A: [1, function(){}], // end
+				0x2B: [3, function(){}], // jump
+				0x2C: [3, function(){}], // 32x32 ci
+				0x2D: [1, function(){}], // cullDL
+				0x2E: [1, function(){}], // cc
+				0x2F: [1, function(){}], // setothermode_low
+				// 0x30:     quad
+				// 0x31,32:  nops
+				// 0x33:     ?
+				// 0x34->52: load vertices
+				0x53: [1, function(){}], // cc
+				0x54: [1, function(){}], // setothermode_low
+				0x55: [1, function(){}], // setothermode_low
+				0x56: [1, function(){}], // setgeomode, cull back
+				0x57: [1, function(){}], // cleargeomode cull back
 				0x58: [5, function(){ // draw_tri2
-					dl_data[dl_pos + 1];
-					console.log("draw_tri2");
+					var hi16 = getU16BE(dl_data, dl_pos + 1);
+					var lo16 = getU16BE(dl_data, dl_pos + 3);
+					var t0 = [], t1 = [];
+					t0[0] = (((hi16 & 0x1800) >> 7) | ((hi16 & 0x0700) >>  7)) / 2;
+					t0[1] = (((hi16 & 0x0003) << 4) | ((hi16 & 0xE000) >> 12)) / 2;
+					t0[2] = (((hi16 & 0x0060) >> 1) | ((hi16 & 0x001C) >>  1)) / 2;
+					t1[0] = (((lo16 & 0x1800) >> 7) | ((lo16 & 0x0700) >>  7)) / 2;
+					t1[1] = (((lo16 & 0x0003) << 4) | ((lo16 & 0xE000) >> 12)) / 2;
+					t1[2] = (((lo16 & 0x0060) >> 1) | ((lo16 & 0x001C) >>  1)) / 2;
+					dl_vbuf.faces.push(new THREE.Face3(t0[0], t0[1], t0[2]));
+					dl_vbuf.faces.push(new THREE.Face3(t1[0], t1[1], t1[2]));
+					//todo push uvs to dl_uvbuf here
 				}],
-				0x2A: [1, function(){ // end
-					console.log("end");
-					// add current mesh to scene
-				}],
-				0x2B: [3, function(){ // jump
-					console.log("jump");
-				}]
 			};
+			
+			// draw and clear vertex buffer, load vcount vertices from seg04 given offset s4pos
+			function dl_vload(s4pos, vcount){
+				var material = new THREE.MeshBasicMaterial({wireframe: true, side: THREE.DoubleSide, color: new THREE.Color(Math.random()*0xFFFFFF)});
+				addmesh(new THREE.Mesh(dl_vbuf, material));
+				dl_vbuf = new THREE.Geometry();
+				dl_uvbuf = [];
+				for(var i = 0; i < vcount; i++){
+					dl_vbuf.vertices.push(new THREE.Vector3(SEG04_VERTS[s4pos+i*7], SEG04_VERTS[s4pos+i*7+1], SEG04_VERTS[s4pos+i*7+2]));
+					// save UV coordinates:
+					dl_uvbuf.push([SEG04_VERTS[s4pos+i*7+3], SEG04_VERTS[s4pos+i*7+4]]);
+				}
+			}
 			function dl_exec(dl){
 				dl_data = dl;
-				for(var i = 0; i < 8; i++){
-					var cmd = dl_cmds[dl_data[dl_pos]];
-					cmd[1]();
-					dl_pos += cmd[0];
+				for(var i = 0; dl_data[dl_pos] != 0xFF; i++){
+					if(dl_data[dl_pos] > 0x33 && dl_data[dl_pos] < 0x53){
+						var vcount = dl_data[dl_pos] - 0x32;
+						var pos = ((dl_data[dl_pos+2]<<8) | dl_data[dl_pos+1]) * 7;
+						dl_vload(pos, vcount);
+						dl_pos += 3;
+					} else {
+						var cmd = dl_cmds[dl_data[dl_pos]];
+						if(typeof(cmd) == "undefined"){
+							console.log("unimplemented command", dl_data[dl_pos].toString(16));
+							break;
+						}
+						cmd[1]();
+						dl_pos += cmd[0];
+					}
 				}
 			}
 			
 			// Mesh classes:
 			function ItemBoxMesh(){
-				//var t = new THREE.DataTexture(test_texturedata, 32, 32, THREE.RGBAFormat, THREE.UnsignedShort5551Type);
-				//t.needsUpdate = true;
+				var t = new THREE.DataTexture(SEG05_TEX.slice(0, 0x400), 32, 32, THREE.RGBAFormat, THREE.UnsignedShort5551Type);
+				t.needsUpdate = true;
 				return new THREE.Mesh(
 					new THREE.BoxGeometry(10, 10, 10),
-					new THREE.MeshBasicMaterial({color: 0xFF0000, wireframe: true}/*{map: t}*/)
+					new THREE.MeshBasicMaterial({map: t})
 				);
 			}
 			function PlantMesh(){
@@ -284,7 +373,6 @@
 					var intersects = raycaster.intersectObjects(scene.children); 
 					if(intersects.length > 0 && meshes[intersects[0].object.identity][0] == "object") {
 						mesh_selection = meshes[intersects[0].object.identity];
-						console.log(meshes[intersects[0].object.identity]);
 						for(var i = 0; i < meshes.length; i++){
 							if(meshes[i][0] == "object"){
 								meshes[i][2].material.color.g = 0;
@@ -307,40 +395,28 @@
 				mesh.identity = meshes.push([cat || "", tag || "", mesh]) - 1;
 			}
 			
-			function drawCourseGeometry(segmentbuffer, dlist, mapId){ // course mesh
-				SEG04_VERTS = new Uint8ToInt16ArrayBE(segmentbuffer);
-				SEG05_TEX   = new Uint16Array(0x40000); // not sure how much the game allocates but this should be sufficient
+			function loadTextureBank(mapId){
+				SEG05_TEX = new Uint16Array(0x40000); // not sure how much the game allocates but this should be sufficient
 				var tex_offset = 0;
 				var refs_start = maps[mapId].REFS_START & 0x00FFFFFF;
 				var mio0_address;
 				for(var i = 0; mio0_address = getU32BE(romdata, refs_start + i * 16); i++){
 					mio0_address = BANK_TEXTURES + (mio0_address & 0x00FFFFFF);
-					console.log(tex_size);
+					//console.log(tex_size);
 					var tex_size = getU32BE(romdata, refs_start + i * 16 + 8);
 					var tdata = Uint8ToUint16ArrayBE(mio0decode(romdata, mio0_address));
-					console.log(tdata);
+					//console.log(tdata);
 					for(var j = 0; j < tdata.length; j++){
 						SEG05_TEX[tex_offset + j] = tdata[j];
 						//console.log("test");
 					}
 					tex_offset += tex_size / 2;
 				}
+			}
+			
+			function drawCourseGeometry(segmentbuffer, dlist, mapId){ // course mesh
+				SEG04_VERTS = new Uint8ToInt16ArrayBE(segmentbuffer);
 				dl_exec(dlist);
-				console.log("bad mesh render disabled, starting dlist implementation");
-				//var geometry = new THREE.BufferGeometry();
-				//var vertexPositions = [];
-				//for(var i = 0; i < s16data.length; i += 7){
-				//	vertexPositions.push([s16data[i+0], s16data[i+1], s16data[i+2]]);
-				//}
-				//var vertices = new Float32Array(vertexPositions.length * 3);
-				//for (var i = 0; i < vertexPositions.length; i++){
-				//	vertices[i*3 + 0] = vertexPositions[i][0];
-				//	vertices[i*3 + 1] = vertexPositions[i][1];
-				//	vertices[i*3 + 2] = vertexPositions[i][2];
-				//}
-				//geometry.addAttribute('position', new THREE.BufferAttribute(vertices, 3));
-				//var material = new THREE.MeshBasicMaterial({color: 0x666666, wireframe: true});
-				//addmesh(new THREE.Mesh(geometry, material));
 			}
 			
 			function drawSeg06(segmentbuffer, mapId){ // just path and object positions for now
@@ -467,13 +543,11 @@
 					tctx.fillRect((i % width) + x, ((i / width)|0) + y, 1, 1);
 				}
 			}
-			
 			// draw all course textures to tex canvas
 			function drawSeg05Preview(mapId){
 				tctx.clearRect(0, 0, 1024, 128);
 				var mapdata = maps[mapId];
 				var refs_start = mapdata.REFS_START & 0x00FFFFFF;
-				//console.log(getU32BE(romdata, refs_start));
 				var mio0_address;
 				var x = 0;
 				var y = 0;
@@ -491,10 +565,14 @@
 					}
 				}
 			}
-			
-			//var test_texturedata; // TEST: load first texture from list here, apply to item boxes
-			
 			function drawMap(mapId){
+				// clean dl
+				dl_data = [];
+				dl_pos = 0;
+				dl_vbuf = new THREE.Geometry();
+				dl_uvbuf = [];
+				dl_tex = [];
+				loadTextureBank(mapId);
 				drawSeg05Preview(mapId);
 				scene = new THREE.Scene();
 				meshes = [];
@@ -510,7 +588,6 @@
 				var seg04 = mio0decode(romdata, mapdata.MESH_START);
 				var dlist = romdata.slice(mapdata.MESH_START + (mapdata.DLIST_ADDR & 0xFFFFFF), mapdata.MESH_END);
 				drawCourseGeometry(seg04, dlist, mapId);
-				console.log(dlist);
 				loadedname.innerHTML = MAPNAMES[mapId];
 			}
 			
