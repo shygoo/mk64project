@@ -1,0 +1,34 @@
+<title>View kart controls</title>
+ROM: <input type="file" id="rom">
+<pre id="pre" style="font: 11px Consolas;"></pre>
+<script src="shared.js"></script>
+<script>
+var chars = [
+ "Mario ",
+ "Luigi ",
+ "Peach ",
+ "Toad  ",
+ "Yoshi ",
+ "DK    ",
+ "Wario ",
+ "Bowser"
+];
+
+var KARTSPECS = 0x0E3AD0;
+
+var romdata;
+var pre = document.getElementById("pre");
+new BinInput("rom", function(result){
+	romdata = new DataView(result);
+	var output = "";
+	for(var i = 0; i < 8; i++){
+		output += chars[i] + " ";
+		for(var j = 0; j < 10; j++){
+			output += romdata.getFloat32(KARTSPECS + i*40 + j*4).toFixed(1) + "  ";
+		}
+		output += "\n";
+	}
+	pre.innerHTML = output;
+});
+
+</script>
