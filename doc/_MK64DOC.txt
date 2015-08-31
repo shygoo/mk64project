@@ -109,14 +109,18 @@ Course data reference table (122390 / 802B8D80)
 || 
 ||     At the end of the MIO0 block reference list there are 16 bytes of null padding followed by a list of segmented addresses referencing display lists in segment 06
 ||
-|+--> Mesh entry structure (14 bytes each):
-|      0x00: s16 Vx
-|      0x02: s16 Vy
-|      0x04: s16 Vz
-|      0x06: ?
-|      0x08: ?
-|      0x0A: ?
-|      0x0C: ?
+|+--> Mesh vertex structure (14 bytes each):
+|      ROM (14 bytes):    RAM (16 bytes):
+|      0x00: s16 Vx       0x00: s16 Vx
+|      0x02: s16 Vy       0x02: s16 Vy
+|      0x04: s16 Vz       0x04: s16 Vz
+|      0x06: s16 U        0x06: u16 (unused?)
+|      0x08: s16 V        0x08: s16 U
+|      0x0A: ?            0x0A: s16 V
+|      0x0C: ?            0x0C: u8  R
+|                         0x0D: u8  G
+|                         0x0E: u8  B
+|                         0x0F: u8  A
 |
 +---> Offsets for segment 6 assets are hardcoded
 
