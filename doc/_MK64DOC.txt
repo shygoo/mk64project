@@ -40,10 +40,11 @@ DATA 122390 802B8D80 Course data reference table
      132B50 -------- First MIO0 block
      145470 -------- Kart texture and palette bank (MIO0 8CI textures, raw RGBA5551 palettes)
      641F70 -------- Course texture bank
-     712DC0 -------- An MIO0 bank
+     712DC0 -------- An MIO0 bank (kart exaust textures?)
+	 729A30 -------- MIO0 Large character face textures
      7FA3C0 -------- TKMK00 bank
      820FC0 -------- Last TKMK block in ROM
-     821D10 -------- ? Two MIO0 blocks
+     821D10 -------- Two MIO0 blocks (trophy reflections; winner podium numbers?) (821D10: https://i.gyazo.com/328df5628d20864d1876340533220b1e.png, 825800: https://i.gyazo.com/1fc15207d922207b4987d773b764f4e9.png)
      8284D0 -------- Course assets MIO0 bank
      88CD70 -------- Course texture/Seg06 dlist reference bank
      88FA10 -------- Course MIO0 vertex data & special dlist bank
