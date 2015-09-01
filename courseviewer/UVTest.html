@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Course viewer</title>
+		<meta charset="utf-8">
+		<style>
+			body {
+				margin: 0px;
+				background-color: #111;
+				overflow: hidden;
+				color: #fff;
+				font: 11px tahoma;
+			}
+			input, select, option {
+				font: 11px tahoma;
+			}
+			.optionlist {
+				vertical-align: top; overflow:auto; height: 250px; width: 150px; background-color: #000; border:1px solid #444; padding:4px;
+				cursor: default;
+			}
+			.optionlist div {
+				cursor: default;
+			}
+			.optionlist div:hover {
+				background-color: #440;
+			}
+		</style>
+	</head>
+	<body>
+		Rom file (Z64) <input type="file" id="romfile" value="">
+		<center style="padding:10px;">
+			<div style="display: inline-block; text-align:left;">
+				<div style="display:inline-block; vertical-align:top;">
+					<div style="background-color:#444;padding:4px;">Courses</div>
+					<div id="coursemenu" class="optionlist"></div>
+					<div style="background-color:#444;padding:4px;margin-top:4px">Objects</div>
+					<div id="objects" class="optionlist"></div>
+				</div>
+				<div style="display:inline-block; vertical-align:top;">
+					<div style="background-color:#444;padding:4px;" id="loadedname">(No course loaded)</div>
+					<div id="container" style="display:inline-block;"></div>
+					<canvas id="textures" width="960" height="128" style="background-color:#000;border:1px solid #444;display:block"></canvas>
+				</div>
+			</div>
+		</center>
+		<pre id="dbg"></pre>
+		<script src="three.min.js"></script>
+		<script src="shared.js"></script>
+		<script>
+			var tctx = document.getElementById("textures").getContext("2d");
+			
+			var coursemenu = document.getElementById("coursemenu");
+			var loadedname = document.getElementById("loadedname");
+			var dbg = document.getElementById("dbg");
+			function log(s, nobr){
+				dbg.innerHTML += s + (nobr ? "" : "\n"); 
+			}
+
+			var MAPNAMES = [
+				"Mario Raceway      ", 
+				"Choco Mountain     ",
+				"Bowser's Castle    ",
+				"Banshee Boardwalk  ",
+				"Yoshi Valley       ",
+				"Frappe Snowland    ",
+				"Koopa Troopa Beach ",
+				"Royal Raceway      ",
+				"Luigi Raceway      ",
+				"Moo Moo Farm       ",
+				"Toad's Turnpike    ",
+				"Kalimari Desert    ",
+				"Sherbet Land       ",
+				"Rainbow Road       ",
+				"Wario Stadium      ",
+				"Block Fort         ",
+				"Skyscraper         ",
+				"Double Deck        ",
+				"DK's Jungle Parkway",
+				"Big Donut          ",
+			];
+			
+			var MAPSTRUCTS    = 0x122390;
+			var BANK_TEXTURES = 0x641F70;
+			
+			// load data here
+			var SEG03_COMTEX; // common textures
+			var SEG04_VERTS;  // vertices
+			var SEG05_TEX;    // course textures
+			var SEG06_ASSETS; // assets/dlist
+			var SEG07_DLIST;  // packed dlist
+			
+			var maps = [];
+			
+			var map_presets = {
+				0x00: { // mario raceway
+					path_u: [0x5568],
+					path:   [0x57B0],
+					items:  [0x9498],
+					plants: [0x9518],
+					trees:  [0x9570]
+				},
+				0x01: {  // choco
+					path_u: [0x4480],
+					path:   [0x47F0],
+					items:  [0x7250]
+				},
+				0x02: {  // bowser
+					path_u: [0x4F90],
+					path:   [0x51D0],
+					bushes: [0x9290],
+					items:  [0x9370],
+				},
+				0x03: { // banshee boardwalk
+					path_u: [0x4578],
+					path:   [0x47F0],
+					items:  [0xB3D0]
+				},
+				0x04: {  // yoshi 
+					path_u: [0xD780, 0xD9C8, 0xDC18, 0xDEA8],
+					path:   [0xE150, 0xF680, 0x10B58, 0x12090],
+					trees:  [0x180A0],
+					items:  [0x18110],
+				},
+				0x05: { // frappe snowland
+					path:   [0x36E8],
+					path_u: [0x34A0],
+					trees:  [0x7718],
+					items:  [0x7810],
+				},
+				0x06: { // koopa troopa beach
+					path_u: [0xADE0],
+					path:   [0xB1A8],
+					items:  [0x18E78],
+					trees:  [0x18F70],
+				},
+				0x07: {}, // 
+				0x08: {}, // 
+				0x09: {}, // 
+				0x0A: {}, // 
+				0x0B: {}, // 
+				0x0C: {}, // 
+				0x0D: {}, // 
+				0x0E: {}, // 
+				0x0F: {}, // 
+				0x10: {}, // 
+				0x11: {}, // 
+				0x12: {}, // 
+				0x13: {}, // 
+			};
+			
+			var romdata;
+			BinInput("romfile", function(result){
+				romdata = new Uint8Array(result);
+				for(var i = 0; i < 16; i++){
+					var map = {
+						ASSETS_START : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x00), //--seg6; object placements, path data, some display lists
+						ASSETS_END   : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x04), //_/
+						MESH_START   : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x08), //--vertices and packed dlist
+						MESH_END     : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x0C), //_/ 
+						REFS_START   : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x10), //--image course texture mio0 bank addresses & seg6 dlist refs
+						REFS_END     : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x14), //_/
+						SEG_MESH     : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x18), //--temp buffer for verts/packed dlist, not needed here
+						UNKNOWN_A    : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x1C), //--??
+						DLIST_ADDR   : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x20), //--segmented address of packed dlist
+						DLIST_SIZE   : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x24), //--probably the size of the dlist when unpacked (unchecked)
+						SEG_REFS     : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x28), //--probably the segment number for REFS (tex table & seg6 refs) (unchecked)
+						UNKNOWN_B    : getU16BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x2C)  //--??
+					}
+					maps.push(map);
+					var courselink = document.createElement("div");
+					courselink.mapId = i;
+					courselink.onclick = function(){drawMap(this.mapId);}
+					courselink.appendChild(document.createTextNode(MAPNAMES[i]));
+					coursemenu.appendChild(courselink);
+				}
+				drawMap(0);
+			});
+			
+			// mk64-proprietary display list test rendering
+			// todo parse to regular dlist before rendering
+			var dl_data = [];
+			var dl_pos = 0; // display list command index
+			var dl_vbuf = new THREE.Geometry(); // THREE.Geometry object - copy seg4 sections here via vert commands
+			var dl_uvbuf = []; // push UV mapping coordinates here when vbuf is loaded, for face commands
+			var dl_tex = [];
+			var dl_cmds = {
+				0x15: [1, function(){}], // cc
+				0x16: [1, function(){}], // cc
+				0x17: [1, function(){}], // cc
+				0x18: [1, function(){}], // setothermode_low
+				0x19: [1, function(){}], // setothermode_low
+				0x1A: [3, function(){}], // img32x32_5551
+				0x1B: [3, function(){}], // img32x64_5551
+				0x1C: [3, function(){}], // img64x32_5551
+				0x1D: [3, function(){}], // ia16 32x32
+				0x1E: [3, function(){}], // ia16 32x64
+				0x1F: [3, function(){}], // ia16 64x32
+				0x20: [4, function(){ // img_load
+					//console.log("img_load32x32");
+					var offset = dl_data[dl_pos + 1] * 0x400;
+					dl_tex = SEG05_TEX.slice(offset, offset + 0x400);
+				}],
+				0x21: [4, function(){ // img_load
+					//console.log("img_load32x64");
+					var offset = dl_data[dl_pos + 1] * 0x400;
+					dl_tex = SEG05_TEX.slice(offset, offset + 0x400);
+					//console.log(getU32BE(dl_data, dl_pos).toString(16));
+				}],
+				0x22: [4, function(){ // img_load
+					//console.log("img_load64x32");
+					var offset = dl_data[dl_pos + 1] * 0x400;
+					dl_tex = SEG05_TEX.slice(offset, offset + 0x400);
+					//console.log(getU32BE(dl_data, dl_pos).toString(16));
+				}],
+				0x23: [4, function(){ // img_load ia16 32 32
+					//console.log("img_load64x32");
+					var offset = dl_data[dl_pos + 1] * 0x400;
+					dl_tex = SEG05_TEX.slice(offset, offset + 0x400);
+					//console.log(getU32BE(dl_data, dl_pos).toString(16));
+				}],
+				0x24: [4, function(){ // img_load
+					//console.log("img_load32x64 ia16");
+					var offset = dl_data[dl_pos + 1] * 0x400;
+					dl_tex = SEG05_TEX.slice(offset, offset + 0x400);
+					//console.log(getU32BE(dl_data, dl_pos).toString(16));
+				}],
+				0x26: [1, function(){ // img_scale
+					//console.log("img_scale1");
+				}],
+				0x27: [1, function(){ // img_scale
+					//console.log("img_scale0");
+				}],
+				0x28: [5, function(){}], // load x vertices
+				0x29: [3, function(){ // tri1
+					//console.log("tri1");
+					var hi16 = getU16BE(dl_data, dl_pos + 1);
+					t0 = [];
+					t0[0] = ((hi16 & 0x1800) >> 7) | ((hi16 & 0x0700) >> 7);
+					t0[1] = ((hi16 & 0x0003) << 4) | ((hi16 & 0xE000) >> 12);
+					t0[2] = ((hi16 & 0x0060) >> 1) | ((hi16 & 0x001C) >> 1);
+					dl_vbuf.faces.push(new THREE.Face3(t0[0]/2, t0[1]/2, t0[2]/2));
+				}],
+				0x2A: [1, function(){}], // end
+				0x2B: [3, function(){}], // jump
+				0x2C: [3, function(){}], // 32x32 ci
+				0x2D: [1, function(){}], // cullDL
+				0x2E: [1, function(){}], // cc
+				0x2F: [1, function(){}], // setothermode_low
+				// 0x30:     quad
+				// 0x31,32:  nops
+				// 0x33:     ?
+				// 0x34->52: load vertices
+				0x53: [1, function(){}], // cc
+				0x54: [1, function(){}], // setothermode_low
+				0x55: [1, function(){}], // setothermode_low
+				0x56: [1, function(){}], // setgeomode, cull back
+				0x57: [1, function(){}], // cleargeomode cull back
+				0x58: [5, function(){ // draw_tri2
+					var hi16 = getU16BE(dl_data, dl_pos + 1);
+					var lo16 = getU16BE(dl_data, dl_pos + 3);
+					var t0 = [], t1 = [];
+					t0[0] = (((hi16 & 0x1800) >> 7) | ((hi16 & 0x0700) >>  7)) / 2;
+					t0[1] = (((hi16 & 0x0003) << 4) | ((hi16 & 0xE000) >> 12)) / 2;
+					t0[2] = (((hi16 & 0x0060) >> 1) | ((hi16 & 0x001C) >>  1)) / 2;
+					t1[0] = (((lo16 & 0x1800) >> 7) | ((lo16 & 0x0700) >>  7)) / 2;
+					t1[1] = (((lo16 & 0x0003) << 4) | ((lo16 & 0xE000) >> 12)) / 2;
+					t1[2] = (((lo16 & 0x0060) >> 1) | ((lo16 & 0x001C) >>  1)) / 2;
+					dl_vbuf.faces.push(new THREE.Face3(t0[0], t0[1], t0[2]));
+					dl_vbuf.faces.push(new THREE.Face3(t1[0], t1[1], t1[2]));
+					//todo push uvs to dl_uvbuf here
+				}],
+			};
+			
+			// draw and clear vertex buffer, load vcount vertices from seg04 given offset s4pos
+			function dl_vload(s4pos, vcount){
+				var material = new THREE.MeshBasicMaterial({wireframe: true, side: THREE.DoubleSide, color: new THREE.Color(Math.random()*0xFFFFFF)});
+				addmesh(new THREE.Mesh(dl_vbuf, material));
+				dl_vbuf = new THREE.Geometry();
+				dl_uvbuf = [];
+				for(var i = 0; i < vcount; i++){
+					dl_vbuf.vertices.push(new THREE.Vector3(SEG04_VERTS[s4pos+i*7], SEG04_VERTS[s4pos+i*7+1], SEG04_VERTS[s4pos+i*7+2]));
+					// save UV coordinates:
+					dl_uvbuf.push([SEG04_VERTS[s4pos+i*7+3], SEG04_VERTS[s4pos+i*7+4]]);
+				}
+			}
+			function dl_exec(dl){
+				dl_data = dl;
+				for(var i = 0; dl_data[dl_pos] != 0xFF; i++){
+					if(dl_data[dl_pos] > 0x33 && dl_data[dl_pos] < 0x53){
+						var vcount = dl_data[dl_pos] - 0x32;
+						var pos = ((dl_data[dl_pos+2]<<8) | dl_data[dl_pos+1]) * 7;
+						dl_vload(pos, vcount);
+						dl_pos += 3;
+					} else {
+						var cmd = dl_cmds[dl_data[dl_pos]];
+						if(typeof(cmd) == "undefined"){
+							console.log("unimplemented command", dl_data[dl_pos].toString(16));
+							break;
+						}
+						cmd[1]();
+						dl_pos += cmd[0];
+					}
+				}
+			}
+			
+			// Mesh classes:
+			function TestUVMesh(){
+				var verts = [
+				//    x    y    z     u v
+					 [  0, 800,   0, [0,1]], // upper left
+					 [  0,   0,   0, [0,0]], // lower left
+					 [800,   0,   0, [1,0]], // lower right
+					 [800, 800,   0, [1,1]]  // upper right
+				];
+				var faces = [
+					[0, 1, 2], // upper left, lower left, lower right
+					[0, 2, 3] // upper left, lower right, upper right
+				];
+				var geo = new THREE.Geometry();
+				for(var i = 0; i < verts.length; i++){
+					geo.vertices.push(new THREE.Vector3(verts[i][0], verts[i][1], verts[i][2]));
+				}
+				for(var i = 0; i < faces.length; i++){
+					geo.faces.push(new THREE.Face3(faces[i][0], faces[i][1], faces[i][2]));
+					geo.faceVertexUvs[0].push([
+						new THREE.Vector2(verts[faces[i][0]][3][0], verts[faces[i][0]][3][1]),
+						new THREE.Vector2(verts[faces[i][1]][3][0], verts[faces[i][1]][3][1]),
+						new THREE.Vector2(verts[faces[i][2]][3][0], verts[faces[i][2]][3][1])
+					]);
+				}
+				var tex = new THREE.ImageUtils.generateDataTexture(32, 32, new THREE.Color(0xFF00FF));
+				for(var i = 0; i < tex.image.data.length/2; i++){
+					tex.image.data[i] = Math.random()*255;
+				}
+				var mat  = new THREE.MeshBasicMaterial({map: tex});
+				return new THREE.Mesh(geo, mat);
+			}
+			function ItemBoxMesh(){
+				var t = new THREE.DataTexture(SEG05_TEX.slice(0, 0x400), 32, 32, THREE.RGBAFormat, THREE.UnsignedShort5551Type);
+				t.needsUpdate = true;
+				return new THREE.Mesh(
+					new THREE.BoxGeometry(10, 10, 10),
+					new THREE.MeshBasicMaterial({map: t})
+				);
+			}
+			function PlantMesh(){
+				var tex = new THREE.ImageUtils.generateDataTexture(32, 32, new THREE.Color(0xFFFFFF));
+				return new THREE.Mesh(
+					new THREE.BoxGeometry(15, 15, 15),
+					new THREE.MeshBasicMaterial({map:tex})
+				);
+			}
+			function TreeMesh(){
+				return new THREE.Mesh(
+					new THREE.BoxGeometry(10, 40, 10),
+					new THREE.MeshBasicMaterial({color: 0xFF0000, wireframe: true})
+				);
+			}
+			
+			// threejs vars
+			var camera, scene, renderer, mouse, raycaster;
+			var camera_birdseye;
+			var scenewidth = 960;
+			var sceneheight = 640;
+			
+			// keep track of meshes
+			var meshes = [];
+			var mesh_selection;
+
+			function init() { // initialise scene
+				renderer = new THREE.WebGLRenderer();
+				scene = new THREE.Scene();
+				mouse = new THREE.Vector2();
+				raycaster = new THREE.Raycaster();
+				
+				camera = new THREE.PerspectiveCamera(60, scenewidth/sceneheight, 1, 6000);
+				camera.rotation.order = "YXZ";
+				camera_birdseye = new THREE.PerspectiveCamera(60, scenewidth/sceneheight, 1, 6000);
+				
+				renderer.setPixelRatio(window.devicePixelRatio);
+				renderer.setSize(scenewidth, sceneheight);
+				renderer.enableScissorTest(true);
+				renderer.domElement.style.width = "960px";
+				renderer.domElement.style.height = "640px";
+				renderer.domElement.style.border = "1px solid #444";
+				document.getElementById("container").appendChild(renderer.domElement);
+				
+				camera.position.x = 1500;
+				camera.position.y = 500;
+				camera.position.z = 3000;
+				
+				camera_birdseye.position.x = 1300;
+				camera_birdseye.position.y = 3000;
+				camera_birdseye.position.z = 0;
+				camera_birdseye.rotation.x = -(2 * (Math.PI) / 4);
+				
+				renderer.domElement.onmousemove = function(e){
+					var rect = this.getBoundingClientRect();
+					mouse.x = ((e.clientX - rect.x) / this.clientWidth ) * 2 - 1;
+					mouse.y = -((e.clientY - rect.y) / this.clientHeight ) * 2 + 1;
+				}
+				renderer.domElement.onmousedown = function(e){
+					e.preventDefault();
+					raycaster.setFromCamera(mouse, camera);
+					var intersects = raycaster.intersectObjects(scene.children); 
+					if(intersects.length > 0 && meshes[intersects[0].object.identity][0] == "object") {
+						mesh_selection = meshes[intersects[0].object.identity];
+						for(var i = 0; i < meshes.length; i++){
+							if(meshes[i][0] == "object"){
+								meshes[i][2].material.color.g = 0;
+							}
+						}
+						mesh_selection[2].material.color.g = 1;
+						intersects[0].object.material.color.g = 1;
+					}
+				}
+				renderer.domElement.onwheel = function(e){
+					camera.translateZ(e.deltaY * 30);
+				}
+			}
+			
+			function addmesh(mesh, x, y, z, cat, tag){ // add mesh to scene with coordinates, save ref to meshes array
+				mesh.position.x = x || 0;
+				mesh.position.y = y || 0;
+				mesh.position.z = z || 0;
+				scene.add(mesh);
+				mesh.identity = meshes.push([cat || "", tag || "", mesh]) - 1;
+			}
+			
+			function loadTextureBank(mapId){
+				SEG05_TEX = new Uint16Array(0x40000); // not sure how much the game allocates but this should be sufficient
+				var tex_offset = 0;
+				var refs_start = maps[mapId].REFS_START & 0x00FFFFFF;
+				var mio0_address;
+				for(var i = 0; mio0_address = getU32BE(romdata, refs_start + i * 16); i++){
+					mio0_address = BANK_TEXTURES + (mio0_address & 0x00FFFFFF);
+					//console.log(tex_size);
+					var tex_size = getU32BE(romdata, refs_start + i * 16 + 8);
+					var tdata = Uint8ToUint16ArrayBE(mio0decode(romdata, mio0_address));
+					//console.log(tdata);
+					for(var j = 0; j < tdata.length; j++){
+						SEG05_TEX[tex_offset + j] = tdata[j];
+						//console.log("test");
+					}
+					tex_offset += tex_size / 2;
+				}
+			}
+			
+			function drawCourseGeometry(segmentbuffer, dlist, mapId){ // course mesh
+				SEG04_VERTS = new Uint8ToInt16ArrayBE(segmentbuffer);
+				dl_exec(dlist);
+			}
+			
+			function drawSeg06(segmentbuffer, mapId){ // just path and object positions for now
+				var s16data = Uint8ToInt16ArrayBE(segmentbuffer);
+				var LIST_END = -0x8000; // position lists end when an X coordinate is 0x8000 apparently
+
+				var path_u = map_presets[mapId].path_u || [];
+				var path   = map_presets[mapId].path   || [];
+				var items  = map_presets[mapId].items  || [];
+				var plants = map_presets[mapId].plants || [];
+				var trees  = map_presets[mapId].trees  || [];
+				var bushes = map_presets[mapId].bushes || [];
+				
+				// detailed paths:
+				pathcolors = [0x00FF00, 0xFF0000, 0xFFFF00, 0xFF00FF];
+				pathcolor_i = 0;
+				path.forEach(function(path_offset){
+					var geometry = new THREE.BufferGeometry();
+					var vertexPositions = [];
+					for(var i = path_offset/2; s16data[i] ^ LIST_END; i += 4){
+						vertexPositions.push([s16data[i+0], s16data[i+1], s16data[i+2]]);
+					}
+					var vertices = new Float32Array(vertexPositions.length * 3);
+					for(var i = 0; i < vertexPositions.length; i++){
+						vertices[i*3 + 0] = vertexPositions[i][0];
+						vertices[i*3 + 1] = vertexPositions[i][1];
+						vertices[i*3 + 2] = vertexPositions[i][2];
+					}
+					geometry.addAttribute('position', new THREE.BufferAttribute(vertices, 3));
+					var col = (Math.random()*0x7FFFFF | 0) + 0x7FFFFF
+					var material = new THREE.PointCloudMaterial({color: pathcolors[pathcolor_i], size: 1});
+					addmesh(new THREE.PointCloud(geometry, material), 0, 0, 0, "data", "path");
+					pathcolor_i = (pathcolor_i + 1) % 4;
+				});
+				
+				// simple paths:
+				path_ucolors = [0x006600, 0x660000, 0x666600, 0x660066];
+				path_ucolor_i = 0;
+				path_u.forEach(function(path_u_offset){
+					geometry = new THREE.BufferGeometry();
+					vertexPositions = [];
+					for(var i = path_u_offset/2; s16data[i] ^ LIST_END; i += 4){
+						vertexPositions.push([s16data[i+0], s16data[i+1], s16data[i+2]]);
+					}
+					var vertices = new Float32Array( vertexPositions.length * 3)
+					for(var i = 0; i < vertexPositions.length; i++){
+						vertices[i*3 + 0] = vertexPositions[i][0];
+						vertices[i*3 + 1] = vertexPositions[i][1];
+						vertices[i*3 + 2] = vertexPositions[i][2];
+					}
+					geometry.addAttribute('position', new THREE.BufferAttribute(vertices, 3));
+					material = new THREE.PointCloudMaterial({color: path_ucolors[path_ucolor_i], size: 10});
+					addmesh(new THREE.PointCloud(geometry, material), 0, 0, 0, "data", "path_u");
+					path_ucolor_i = (path_ucolor_i + 1) % 4;
+				});
+				
+				// objects:
+				items.forEach(function(items_offset){ // item boxes
+					for(var i = items_offset/2; s16data[i] ^ LIST_END; i += 4){
+						addmesh(new ItemBoxMesh(), s16data[i+0], s16data[i+1], s16data[i+2], "object", "Item box");
+					}
+				});
+				plants.forEach(function(plants_offset){ // piranha plants
+					for(var i = plants_offset/2; s16data[i] ^ LIST_END; i += 4){
+						addmesh(new PlantMesh(), s16data[i+0], s16data[i+1], s16data[i+2], "object", "Piranha plant");
+					}
+				});
+				trees.forEach(function(trees_offset){ // trees
+					for(var i = trees_offset/2; s16data[i] ^ LIST_END; i += 4){
+						addmesh(new TreeMesh(), s16data[i+0], s16data[i+1], s16data[i+2], "object", "Tree A");
+					}
+				});
+				bushes.forEach(function(bushes_offset){ // bushes
+					for(var i = bushes_offset/2; s16data[i] ^ LIST_END; i += 4){
+						addmesh(new PlantMesh(), s16data[i+0], s16data[i+1], s16data[i+2], "object", "Bush");
+					}
+				});
+				
+				var object_pane = document.getElementById("objects");
+				object_pane.innerHTML = "";
+				for(var i = 0; i < meshes.length; i++){
+					if(meshes[i][0] == "object"){
+						var object_entry = document.createElement("div");
+						object_entry.appendChild(document.createTextNode(meshes[i][1]));
+						object_entry.index = i;
+						object_entry.onmouseenter = function(){
+							for(var i = 0; i < meshes.length; i++){
+								if(meshes[i][0] == "object"){
+									meshes[i][2].material.color.b = 0;
+								}
+							}
+							meshes[this.index][2].material.color.b = 1;
+						}
+						object_entry.onmouseleave = function(){
+							for(var i = 0; i < meshes.length; i++){
+								if(meshes[i][0] == "object"){
+									meshes[i][2].material.color.b = 0;
+								}
+							}
+						}
+						object_entry.onclick = function(){
+							for(var i = 0; i < meshes.length; i++){
+								if(meshes[i][0] == "object"){
+									meshes[i][2].material.color.g = 0;
+								}
+							}
+							meshes[this.index][2].material.color.g = 1;
+							mesh_selection = meshes[this.index];
+						}
+						object_pane.appendChild(object_entry);
+					}
+				}
+			}
+			
+			// draw single texture to tex canvas
+			function drawTexPreview(imgdata, x, y, width, height){
+				for(var i = 0; i < imgdata.length && ((i / width)|0) < height; i++){
+					var pixel = imgdata[i];
+					var r = ((pixel & 0xF800) >> 11) << 3;
+					var g = ((pixel & 0x07C0) >>  6) << 3;
+					var b = ((pixel & 0x003E) >>  1) << 3;
+					var a = pixel & 1;
+					tctx.fillStyle = "rgba(" + r + ", " + g + ", " + b + ", " + a + ")";
+					tctx.fillRect((i % width) + x, ((i / width)|0) + y, 1, 1);
+				}
+			}
+			// draw all course textures to tex canvas
+			function drawSeg05Preview(mapId){
+				tctx.clearRect(0, 0, 1024, 128);
+				var mapdata = maps[mapId];
+				var refs_start = mapdata.REFS_START & 0x00FFFFFF;
+				var mio0_address;
+				var x = 0;
+				var y = 0;
+				for(var i = 0; mio0_address = getU32BE(romdata, refs_start + i * 16); i++){
+					mio0_address = (mio0_address & 0x00FFFFFF) + BANK_TEXTURES;
+					var tex_size = getU32BE(romdata, refs_start + i * 16 + 8);
+					var tdata = Uint8ToUint16ArrayBE(mio0decode(romdata, mio0_address));
+					var width = (tex_size == 2048) ? 32 : 64;
+					var height = 32;
+					drawTexPreview(tdata, x, y, width, height);
+					x += width;
+					if(x >= 960){
+						y += 32;
+						x = 0;
+					}
+				}
+			}
+			function drawMap(mapId){
+				// clean dl
+				dl_data = [];
+				dl_pos = 0;
+				dl_vbuf = new THREE.Geometry();
+				dl_uvbuf = [];
+				dl_tex = [];
+				loadTextureBank(mapId);
+				drawSeg05Preview(mapId);
+				scene = new THREE.Scene();
+				meshes = [];
+				resetCamera();
+				var mapdata = maps[mapId];
+				var presets = map_presets[mapId];
+				if(presets){
+					var seg06 = mio0decode(romdata, mapdata.ASSETS_START);
+					drawSeg06(seg06, mapId);
+				} else {
+					log("Skipped seg06, no preset list for this course available ("+mapId+")")
+				}
+				var seg04 = mio0decode(romdata, mapdata.MESH_START);
+				var dlist = romdata.slice(mapdata.MESH_START + (mapdata.DLIST_ADDR & 0xFFFFFF), mapdata.MESH_END);
+				drawCourseGeometry(seg04, dlist, mapId);
+				loadedname.innerHTML = MAPNAMES[mapId];
+			}
+			
+			function resetCamera(){
+				with(camera.position){
+					x = 1500;
+					y = 500;
+					z = 2500;
+				}
+				with(camera.rotation) x = y = z = 0;
+			}
+			
+			var keyevents = {
+				27: function(){ resetCamera()           }, // esc - reset camera position
+				87: function(){ camera.translateZ(-10); }, // w - move forward
+				65: function(){ camera.translateX(-10); }, // a - pan left
+				83: function(){ camera.translateZ( 10); }, // s - move backward
+				68: function(){ camera.translateX( 10); }, // d - pan right
+				90: function(){ camera.translateY(-10); }, // z - move down
+				88: function(){ camera.translateY( 10); }, // x - move up
+				40: function(){ camera.rotateX( -0.05); }, // down - rotate down
+				38: function(){ camera.rotateX(  0.05); }, // up - rotate up
+				37: function(){ camera.rotateY(  0.05); camera.rotation.z = 0;}, // left - rotate left
+				39: function(){ camera.rotateY( -0.05); camera.rotation.z = 0;}  // right - rotate right
+			};
+			
+			var keysdown = [];
+			document.body.onkeydown = function(e){
+				keysdown[e.keyCode] = true;
+			}
+			document.body.onkeyup = function(e){
+				delete keysdown[e.keyCode];
+			}
+			function animate(){
+				camera.rotation.z = 0;
+				requestAnimationFrame(animate);
+				for(var i in keysdown){
+					if(i in keyevents) keyevents[i]();
+				}
+				// render main view:
+				renderer.setClearColor(0x000000, 1);
+				renderer.setViewport(0, 0, scenewidth, sceneheight);
+				renderer.setScissor(0, 0, scenewidth, sceneheight);
+				renderer.render(scene, camera);
+				// render bird's eye view:
+				renderer.setClearColor(0x111111, 1);
+				renderer.setViewport(scenewidth - scenewidth/5 - 10, sceneheight - sceneheight/5 - 10, scenewidth/5, sceneheight/5);
+				renderer.setScissor(scenewidth - scenewidth/5 - 10, sceneheight - sceneheight/5 - 10, scenewidth/5, sceneheight/5);
+				renderer.render(scene, camera_birdseye);
+			}
+			init();
+			animate();
+			addmesh(new TestUVMesh())
+		</script>
+	</body>
+</html>
