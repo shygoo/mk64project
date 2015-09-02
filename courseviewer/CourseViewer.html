@@ -182,7 +182,8 @@
 			var dl_pos = 0; // display list command index
 			var dl_vbuf = new THREE.Geometry(); // THREE.Geometry object - copy seg4 sections here via vert commands
 			var dl_uvbuf = []; // push UV mapping coordinates here when vbuf is loaded, for face commands
-			var dl_tex = [];
+			var dl_tex;
+			var dl_img; // slice raw image data here
 			var dl_cmds = {
 				0x15: [1, function(){}], // cc
 				0x16: [1, function(){}], // cc
@@ -196,21 +197,41 @@
 				0x1E: [3, function(){}], // ia16 32x64
 				0x1F: [3, function(){}], // ia16 64x32
 				0x20: [4, function(){ // img_load
-					//console.log("img_load32x32");
-					var offset = dl_data[dl_pos + 1] * 0x400;
-					dl_tex = SEG05_TEX.slice(offset, offset + 0x400);
+					console.log("img_load32x32");
+					//todo move all this stuff into a function with offset & size args
+					var offset = (dl_data[dl_pos+1] + (dl_data[dl_pos+2]<<8)) * 0x400; 
+					var dl_img = SEG05_TEX.slice(offset, offset + 0x400);
+					//dl_tex = new THREE.DataTexture(SEG05_TEX.slice(0, 0x400), 32, 32, THREE.RGBAFormat, THREE.UnsignedShort5551Type); this wont fucking work
+					dl_tex = new THREE.ImageUtils.generateDataTexture(32, 32, new THREE.Color(0x000000));
+					for(var i = 0; i < dl_img.length; i++){
+						dl_tex.image.data[i*3+0] = dl_img[i] >> 8;
+						dl_tex.image.data[i*3+1] = (dl_img[i] & 0x7C0) >> 3;
+						dl_tex.image.data[i*3+2] = (dl_img[i] & 0x3E) << 2;
+					}
 				}],
 				0x21: [4, function(){ // img_load
 					//console.log("img_load32x64");
-					var offset = dl_data[dl_pos + 1] * 0x400;
-					dl_tex = SEG05_TEX.slice(offset, offset + 0x400);
-					//console.log(getU32BE(dl_data, dl_pos).toString(16));
+					var offset = (dl_data[dl_pos+1] + (dl_data[dl_pos+2]<<8)) * 0x400; 
+					var dl_img = SEG05_TEX.slice(offset, offset + 0x800);
+					//dl_tex = new THREE.DataTexture(SEG05_TEX.slice(0, 0x400), 32, 32, THREE.RGBAFormat, THREE.UnsignedShort5551Type); this wont fucking work
+					dl_tex = new THREE.ImageUtils.generateDataTexture(32, 64, new THREE.Color(0x000000));
+					for(var i = 0; i < dl_img.length; i++){
+						dl_tex.image.data[i*3+0] = dl_img[i] >> 8;
+						dl_tex.image.data[i*3+1] = (dl_img[i] & 0x7C0) >> 3;
+						dl_tex.image.data[i*3+2] = (dl_img[i] & 0x3E) << 2;
+					}
 				}],
 				0x22: [4, function(){ // img_load
 					//console.log("img_load64x32");
-					var offset = dl_data[dl_pos + 1] * 0x400;
-					dl_tex = SEG05_TEX.slice(offset, offset + 0x400);
-					//console.log(getU32BE(dl_data, dl_pos).toString(16));
+					var offset = (dl_data[dl_pos+1] + (dl_data[dl_pos+2]<<8)) * 0x400; 
+					var dl_img = SEG05_TEX.slice(offset, offset + 0x800);
+					//dl_tex = new THREE.DataTexture(SEG05_TEX.slice(0, 0x400), 32, 32, THREE.RGBAFormat, THREE.UnsignedShort5551Type); this wont fucking work
+					dl_tex = new THREE.ImageUtils.generateDataTexture(64, 32, new THREE.Color(0x000000));
+					for(var i = 0; i < dl_img.length; i++){
+						dl_tex.image.data[i*3+0] = dl_img[i] >> 8;
+						dl_tex.image.data[i*3+1] = (dl_img[i] & 0x7C0) >> 3;
+						dl_tex.image.data[i*3+2] = (dl_img[i] & 0x3E) << 2;
+					}
 				}],
 				0x23: [4, function(){ // img_load ia16 32 32
 					//console.log("img_load64x32");
@@ -266,14 +287,32 @@
 					t1[1] = (((lo16 & 0x0003) << 4) | ((lo16 & 0xE000) >> 12)) / 2;
 					t1[2] = (((lo16 & 0x0060) >> 1) | ((lo16 & 0x001C) >>  1)) / 2;
 					dl_vbuf.faces.push(new THREE.Face3(t0[0], t0[1], t0[2]));
+					dl_vbuf.faceVertexUvs[0].push([
+						new THREE.Vector2(0, 1),
+						new THREE.Vector2(0, 0),
+						new THREE.Vector2(1, 0)
+					]);
 					dl_vbuf.faces.push(new THREE.Face3(t1[0], t1[1], t1[2]));
+					dl_vbuf.faceVertexUvs[0].push([
+						new THREE.Vector2(0, 1),
+						new THREE.Vector2(0, 0),
+						new THREE.Vector2(1, 0)
+					]);
 					//todo push uvs to dl_uvbuf here
 				}],
 			};
 			
 			// draw and clear vertex buffer, load vcount vertices from seg04 given offset s4pos
 			function dl_vload(s4pos, vcount){
-				var material = new THREE.MeshBasicMaterial({wireframe: true, side: THREE.DoubleSide, color: new THREE.Color(Math.random()*0xFFFFFF)});
+				//var material = new THREE.MeshBasicMaterial({wireframe: true, side: THREE.DoubleSide, color: new THREE.Color(Math.random()*0xFFFFFF)});
+				//dl_tex = new THREE.DataTexture(new Int16Array(0x400), 32, 32, THREE.RGBAFormat, THREE.UnsignedShort5551Type);
+
+				//console.log(SEG05_TEX.slice(0, 0x400));
+				//for(var i = 0; i < dl_tex.image.data.length/2; i++){
+				//	dl_tex.image.data[i] = Math.random()*255;
+				//}
+				console.log(dl_tex);
+				var material = new THREE.MeshBasicMaterial({map: dl_tex});
 				addmesh(new THREE.Mesh(dl_vbuf, material));
 				dl_vbuf = new THREE.Geometry();
 				dl_uvbuf = [];
@@ -300,6 +339,7 @@
 						cmd[1]();
 						dl_pos += cmd[0];
 					}
+					//if(i > 10) break;
 				}
 			}
 			
@@ -628,7 +668,7 @@
 					if(i in keyevents) keyevents[i]();
 				}
 				// render main view:
-				renderer.setClearColor(0x000000, 1);
+				renderer.setClearColor(0xAAAAAA, 1);
 				renderer.setViewport(0, 0, scenewidth, sceneheight);
 				renderer.setScissor(0, 0, scenewidth, sceneheight);
 				renderer.render(scene, camera);
