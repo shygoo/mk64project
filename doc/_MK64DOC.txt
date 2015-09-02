@@ -41,7 +41,7 @@ DATA 122390 802B8D80 Course data reference table
      145470 -------- Kart texture and palette bank (MIO0 8CI textures, raw RGBA5551 palettes)
      641F70 -------- Course texture bank
      712DC0 -------- An MIO0 bank (kart exaust textures?)
-	 729A30 -------- MIO0 Large character face textures
+     729A30 -------- MIO0 Large character face textures
      7FA3C0 -------- TKMK00 bank
      820FC0 -------- Last TKMK block in ROM
      821D10 -------- Two MIO0 blocks (trophy reflections; winner podium numbers?) (821D10: https://i.gyazo.com/328df5628d20864d1876340533220b1e.png, 825800: https://i.gyazo.com/1fc15207d922207b4987d773b764f4e9.png)
@@ -72,7 +72,7 @@ RAM segments table (80150258)
 
 Course data reference table (122390 / 802B8D80)
  This table references course display lists, vertex data, textures, object placements; each entry is 0x30 bytes:
-                            00     04       08     0C       10     14      18       1C        20       24        28       2C
+                            00     04       08     0C       10     14      18       1C       20       24       28       2C
  Mario Raceway       0000: [8284D0 82B620] [88FA10 89B510] [88CD70 88D070] 0F000000 0000167D 0F0096F4 00006930 09000000 00000000
  Choco Mountain      0001: [82B620 82DF40] [89B510 8A7640] [88D070 88D340] 0F000000 000015B8 0F00A0B4 00005AE8 09000000 00010000
  Bowser's Castle     0002: [82DF40 831DC0] [8A7640 8B9630] [88D340 88D6C0] 0F000000 00002537 0F00E368 00009918 09000000 00000000
@@ -104,7 +104,7 @@ Course data reference table (122390 / 802B8D80)
 ||| 0x28: 09000000 // Segment to load texture list and dlist jump table?
 ||| 0x2C: 0000     // ? 0000 or 0001
 ||| 0x2E: ----     // struct padding, unused
-|||  
+||| 
 ||+-> Reference structure (16 bytes each): // related function 802A85CC
 ||     0x00: 0F001080 // Offset of an MIO0 block relative to 641F70 (the '0F' prefix is ANDed out)
 ||     0x04: 00000149 // MIO0 block size
@@ -213,7 +213,7 @@ Objects/behavior related
  }
  
  
- 80165C18 course object array
+ 80165C18 course complex object array
  course_object { // 224 bytes each
   ...
   float coord_x; // 0x28
