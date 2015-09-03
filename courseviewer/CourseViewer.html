@@ -176,6 +176,12 @@
 				drawMap(0);
 			});
 			
+			// renderer settings
+			var cfg = {
+				WIREFRAME: true,
+				BGCOLOR  : 0x000000,
+			}
+			
 			// mk64-proprietary display list test rendering
 			// todo parse to regular dlist before rendering
 			var dl_data = [];
@@ -184,6 +190,7 @@
 			var dl_uvbuf = []; // push UV mapping coordinates here when vbuf is loaded, for face commands
 			var dl_tex;
 			var dl_img; // slice raw image data here
+			var dl_tcache = {}; // offset in texture segment => threejs texture object
 			var dl_cmds = {
 				0x15: [1, function(){}], // cc
 				0x16: [1, function(){}], // cc
@@ -198,50 +205,28 @@
 				0x1F: [3, function(){}], // ia16 64x32
 				0x20: [4, function(){ // img_load
 					console.log("img_load32x32");
-					//todo move all this stuff into a function with offset & size args
-					var offset = (dl_data[dl_pos+1] + (dl_data[dl_pos+2]<<8)) * 0x400; 
-					var dl_img = SEG05_TEX.slice(offset, offset + 0x400);
-					//dl_tex = new THREE.DataTexture(SEG05_TEX.slice(0, 0x400), 32, 32, THREE.RGBAFormat, THREE.UnsignedShort5551Type); this wont fucking work
-					dl_tex = new THREE.ImageUtils.generateDataTexture(32, 32, new THREE.Color(0x000000));
-					for(var i = 0; i < dl_img.length; i++){
-						dl_tex.image.data[i*3+0] = dl_img[i] >> 8;
-						dl_tex.image.data[i*3+1] = (dl_img[i] & 0x7C0) >> 3;
-						dl_tex.image.data[i*3+2] = (dl_img[i] & 0x3E) << 2;
-					}
+					var offset = ((dl_data[dl_pos+2]<<8)|dl_data[dl_pos+1]) * 0x400;
+					dl_tload(offset, 32, 32);
 				}],
 				0x21: [4, function(){ // img_load
 					//console.log("img_load32x64");
-					var offset = (dl_data[dl_pos+1] + (dl_data[dl_pos+2]<<8)) * 0x400; 
-					var dl_img = SEG05_TEX.slice(offset, offset + 0x800);
-					//dl_tex = new THREE.DataTexture(SEG05_TEX.slice(0, 0x400), 32, 32, THREE.RGBAFormat, THREE.UnsignedShort5551Type); this wont fucking work
-					dl_tex = new THREE.ImageUtils.generateDataTexture(32, 64, new THREE.Color(0x000000));
-					for(var i = 0; i < dl_img.length; i++){
-						dl_tex.image.data[i*3+0] = dl_img[i] >> 8;
-						dl_tex.image.data[i*3+1] = (dl_img[i] & 0x7C0) >> 3;
-						dl_tex.image.data[i*3+2] = (dl_img[i] & 0x3E) << 2;
-					}
+					var offset = ((dl_data[dl_pos+2]<<8)|dl_data[dl_pos+1]) * 0x400;
+					dl_tload(offset, 32, 64);
 				}],
 				0x22: [4, function(){ // img_load
 					//console.log("img_load64x32");
-					var offset = (dl_data[dl_pos+1] + (dl_data[dl_pos+2]<<8)) * 0x400; 
-					var dl_img = SEG05_TEX.slice(offset, offset + 0x800);
-					//dl_tex = new THREE.DataTexture(SEG05_TEX.slice(0, 0x400), 32, 32, THREE.RGBAFormat, THREE.UnsignedShort5551Type); this wont fucking work
-					dl_tex = new THREE.ImageUtils.generateDataTexture(64, 32, new THREE.Color(0x000000));
-					for(var i = 0; i < dl_img.length; i++){
-						dl_tex.image.data[i*3+0] = dl_img[i] >> 8;
-						dl_tex.image.data[i*3+1] = (dl_img[i] & 0x7C0) >> 3;
-						dl_tex.image.data[i*3+2] = (dl_img[i] & 0x3E) << 2;
-					}
+					var offset = ((dl_data[dl_pos+2]<<8)|dl_data[dl_pos+1]) * 0x400;
+					dl_tload(offset, 64, 32);
 				}],
 				0x23: [4, function(){ // img_load ia16 32 32
 					//console.log("img_load64x32");
-					var offset = dl_data[dl_pos + 1] * 0x400;
+					var offset = ((dl_data[dl_pos+2]<<8)|dl_data[dl_pos+1]) * 0x400;
 					dl_tex = SEG05_TEX.slice(offset, offset + 0x400);
 					//console.log(getU32BE(dl_data, dl_pos).toString(16));
 				}],
 				0x24: [4, function(){ // img_load
 					//console.log("img_load32x64 ia16");
-					var offset = dl_data[dl_pos + 1] * 0x400;
+					var offset = ((dl_data[dl_pos+2]<<8)|dl_data[dl_pos+1]) * 0x400;
 					dl_tex = SEG05_TEX.slice(offset, offset + 0x400);
 					//console.log(getU32BE(dl_data, dl_pos).toString(16));
 				}],
@@ -304,15 +289,7 @@
 			
 			// draw and clear vertex buffer, load vcount vertices from seg04 given offset s4pos
 			function dl_vload(s4pos, vcount){
-				//var material = new THREE.MeshBasicMaterial({wireframe: true, side: THREE.DoubleSide, color: new THREE.Color(Math.random()*0xFFFFFF)});
-				//dl_tex = new THREE.DataTexture(new Int16Array(0x400), 32, 32, THREE.RGBAFormat, THREE.UnsignedShort5551Type);
-
-				//console.log(SEG05_TEX.slice(0, 0x400));
-				//for(var i = 0; i < dl_tex.image.data.length/2; i++){
-				//	dl_tex.image.data[i] = Math.random()*255;
-				//}
-				console.log(dl_tex);
-				var material = new THREE.MeshBasicMaterial({map: dl_tex});
+				var material = new THREE.MeshBasicMaterial({map: dl_tex, wireframe: cfg.WIREFRAME});
 				addmesh(new THREE.Mesh(dl_vbuf, material));
 				dl_vbuf = new THREE.Geometry();
 				dl_uvbuf = [];
@@ -322,10 +299,33 @@
 					dl_uvbuf.push([SEG04_VERTS[s4pos+i*7+3], SEG04_VERTS[s4pos+i*7+4]]);
 				}
 			}
+			function dl_tload(offset, width, height){
+				if(offset in dl_tcache){ // use cached texture object
+					dl_tex = dl_tcache[offset];
+				} else { // create new threejs texture and cache it
+					var dl_img = SEG05_TEX.slice(offset, offset + (width * height));
+					//dl_tex = new THREE.DataTexture(SEG05_TEX.slice(0, 0x400), 32, 32, THREE.RGBAFormat, THREE.UnsignedShort5551Type); this wont fucking work
+					dl_tex = new THREE.ImageUtils.generateDataTexture(width, height, new THREE.Color(0x000000));
+					for(var i = 0; i < dl_img.length; i++){
+						dl_tex.image.data[i*3+0] = dl_img[i] >> 8;
+						dl_tex.image.data[i*3+1] = (dl_img[i] & 0x7C0) >> 3;
+						dl_tex.image.data[i*3+2] = (dl_img[i] & 0x3E) << 2;
+					}
+					dl_tcache[offset] = dl_tex;
+				}
+			}
+			function dl_reset(){
+				dl_data   = [];
+				dl_pos    = 0;
+				dl_vbuf   = new THREE.Geometry();
+				dl_uvbuf  = [];
+				dl_tex    = [];
+				dl_tcache = {};
+			}
 			function dl_exec(dl){
 				dl_data = dl;
 				for(var i = 0; dl_data[dl_pos] != 0xFF; i++){
-					if(dl_data[dl_pos] > 0x33 && dl_data[dl_pos] < 0x53){
+					if(dl_data[dl_pos] > 0x33 && dl_data[dl_pos] < 0x53){ // all load vertex commands
 						var vcount = dl_data[dl_pos] - 0x32;
 						var pos = ((dl_data[dl_pos+2]<<8) | dl_data[dl_pos+1]) * 7;
 						dl_vload(pos, vcount);
@@ -345,11 +345,10 @@
 			
 			// Mesh classes:
 			function ItemBoxMesh(){
-				var t = new THREE.DataTexture(SEG05_TEX.slice(0, 0x400), 32, 32, THREE.RGBAFormat, THREE.UnsignedShort5551Type);
 				t.needsUpdate = true;
 				return new THREE.Mesh(
 					new THREE.BoxGeometry(10, 10, 10),
-					new THREE.MeshBasicMaterial({map: t})
+					new THREE.MeshBasicMaterial({color: 0xFF0000, wireframe: true})
 				);
 			}
 			function PlantMesh(){
@@ -605,28 +604,21 @@
 					}
 				}
 			}
+			// main wrapper for all course rendering functions
 			function drawMap(mapId){
-				// clean dl
-				dl_data = [];
-				dl_pos = 0;
-				dl_vbuf = new THREE.Geometry();
-				dl_uvbuf = [];
-				dl_tex = [];
-				loadTextureBank(mapId);
-				drawSeg05Preview(mapId);
+				console.log("drawmap");
+				dl_reset();
 				scene = new THREE.Scene();
 				meshes = [];
 				resetCamera();
 				var mapdata = maps[mapId];
 				var presets = map_presets[mapId];
-				if(presets){
-					var seg06 = mio0decode(romdata, mapdata.ASSETS_START);
-					drawSeg06(seg06, mapId);
-				} else {
-					log("Skipped seg06, no preset list for this course available ("+mapId+")")
-				}
+				var seg06 = mio0decode(romdata, mapdata.ASSETS_START);
 				var seg04 = mio0decode(romdata, mapdata.MESH_START);
 				var dlist = romdata.slice(mapdata.MESH_START + (mapdata.DLIST_ADDR & 0xFFFFFF), mapdata.MESH_END);
+				loadTextureBank(mapId);
+				drawSeg05Preview(mapId);
+				drawSeg06(seg06, mapId);
 				drawCourseGeometry(seg04, dlist, mapId);
 				loadedname.innerHTML = MAPNAMES[mapId];
 			}
@@ -668,7 +660,7 @@
 					if(i in keyevents) keyevents[i]();
 				}
 				// render main view:
-				renderer.setClearColor(0xAAAAAA, 1);
+				renderer.setClearColor(cfg.BGCOLOR, 1);
 				renderer.setViewport(0, 0, scenewidth, sceneheight);
 				renderer.setScissor(0, 0, scenewidth, sceneheight);
 				renderer.render(scene, camera);
