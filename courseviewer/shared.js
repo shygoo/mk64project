@@ -1,12 +1,30 @@
+// ES6 TypedArray.slice, only implemented by default in firefox
+var TypedArrays = [Uint8Array, Uint8ClampedArray, Int16Array, Uint16Array, Int32Array, Uint32Array, Float32Array, Float64Array];
+for(var i in TypedArrays){
+	if(!TypedArrays[i].prototype.slice){
+		TypedArrays[i].prototype.slice = function(start, end){
+			var ret = new this.constructor(end - start);
+			var j = 0;
+			for(var i = start; i < end; i++){
+				ret[j] = this[i];
+				j++;
+			}
+			return ret;
+		}
+	}
+}
+
+// todo: use builtin DataView with ArrayBuffer instead of all this crap
+// integer management
 function SWAP16(i){
 	return ((i & 0xFF00) >> 8) | ((i & 0xFF) << 8);
 }
 
 function SWAP32(i){
 	return (((i & 0xFF000000) >>> 24) |
-	       ((i & 0x00FF0000) >>>  8) |
-		   ((i & 0x0000FF00) <<  8) |
-		   ((i & 0x000000FF) << 24)) >>> 0;
+	       ((i & 0x00FF0000) >>>   8) |
+		   ((i & 0x0000FF00) <<    8) |
+		   ((i & 0x000000FF) <<   24)) >>> 0;
 }
 
 function unsign32(i){ // unsign js s32
@@ -108,9 +126,8 @@ function mio0decode(/*Uint8Array*/ src, srcOffset){
 			}
 			dictPos += 2;
 		} else { // upper bit of controlPos is 1, copy single byte from dataPos
-			var u8 = src[srcOffset + dataPos];
+			dest[destPos] = src[srcOffset + dataPos];
 			dataPos++;
-			dest[destPos] = u8;
 			destPos++;
 		}
 		controlBits <<= 1; // next bit
