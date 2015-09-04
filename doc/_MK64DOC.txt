@@ -22,6 +22,8 @@ DATA ------ 800DC53C Game mode selection
      ------ 800DC5A0 Course selection
      0E3AD0 800E2ED0 Kart unique settings table, 40 bytes per entry
      0F0468 800EF868 Ascii text bank
+	 0F4BB0 ???????? "RSP Gfx ucode F3DEX 0.95 Yoshitaka Yasumoto Nintendo."
+	 0F53B0 ???????? "RSP Gfx ucode F3DLX 0.95 Yoshitaka Yasumoto Nintendo."
      ------ 80150258 RAM Segments table
      ------ 80165C18 Course RAM objects array? (bowser whomps, luigi hot air balloon)
      ------ 8018EDE4 Character selections
