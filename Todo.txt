@@ -1,0 +1,105 @@
+----------------
+
+new level loading bytecode
+
+Item ID table
+ [number of item IDs]
+  [pointer to existing coordinate array spawner function]
+  ...
+  
+Script table
+ [number of courses]
+  [offset of script] [length of script]
+  ...
+
+## Load raw data from rom to absolute ram address
+ ## 08 00 00 [XX XX XX XX] [YY YY YY YY] [ZZ ZZ ZZ ZZ]
+ X = ram address
+ Y = rom start address
+ Z = rom end address
+  
+## Load raw data from rom to segment
+ ## 0C 00 [XX] [YY YY YY YY] [ZZ ZZ ZZ ZZ]
+ X = destination segment number
+ Y = rom start address
+ Z = rom end address
+ 
+## Decode MIO0 block from rom to ram segment
+ ## 0C 00 [XX] [YY YY YY YY] [ZZ ZZ ZZ ZZ]
+ X = destination segment number
+ Y = rom start address
+ Z = rom end address
+ 
+## Decode MIO0 block from ram segment to ram segment **
+ ## 08 00 [XX] [YY YY YY YY]
+ X = destination segment number
+ Y = segmented address of MIO0 data
+ 
+## Unpack proprietary display list from ram segment to ram segment **
+ ## 08 00 [XX] [YY YY YY YY]
+ X = destination segment number
+ Y = segmented address of proprietary dlist
+ 
+## Place path
+ ## 08 00 00 [XX XX XX XX]
+ X = segmented address of path coordinate array
+ 
+ Coordinate array is terminated when the x coordinate is 0x8000
+ 
+## Place simple objects using coordinate array
+ ## 08 00 [XX] [YY YY YY YY]
+ X = item ID
+ Y = segmented address of s16 coordinate array
+ 
+ Uses the same coordinate array format as the place path command
+
+## Load textures using texture list **
+ ## 08 00 00 [XX XX XX XX]
+ X = segmented address of texture list
+ 
+ Texture list entry structure:
+  u32 0F-prefixed offset of an MIO0 block of a texture in the course texture bank
+  u32 MIO0 block size
+  u32 Decoded size
+  u32 ?? looks always 0
+  
+  Terminated when offset is 00000000
+  
+## Load single texture to segment 05 (MIO0)
+ ## 08 [XX XX] [YY YY YY YY]
+ X = texture size
+ Y = rom address
+ 
+## Load single texture to segment 05 (raw)
+ ## 08 [XX XX] [YY YY YY YY]
+ X = texture size
+ Y = rom address
+ 
+## Call assembly routine
+ ## 08 00 00 [XX XX XX XX]
+ X = routine address
+ 
+Also needed:
+command that handles those seg06 display list references
+complex object placement if possible
+ 
+** Probably won't be used by imported levels, only exists to preserve original functionality
+
+_____________________________________
+
+export/import topology
+
+root/
+ manifest.txt
+ courses/
+  (course name)/
+    settings.txt ------------ music and whatnot
+    geometry.obj ------------ mesh of the level, using course_tex.mtl
+	objects.txt  ------------ object placements; item boxes, trees, etc
+ course_tex.mtl  ------------ material listing of course textures for OBJ
+ course_tex/
+  (course textures)
+ course_com_tex/
+  (course common textures)
+ music/
+  (m64 sequence files)
