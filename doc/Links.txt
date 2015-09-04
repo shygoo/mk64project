@@ -1,6 +1,7 @@
-Some shared F3D commands     http://wiki.spinout182.com/w/F3DEX2
-Zoinkity's mk dlist notes    http://pastebin.com/raw.php?i=QMfNHWA2
-romhacking.net wiki notes    http://datacrystal.romhacking.net/wiki/Mario_Kart_64:Notes
-tcrf wiki notes              https://tcrf.net/Notes:Mario_Kart_64
-Some ghost data stuff        https://github.com/SeanSullivan86/MK64
-Gericom's mk64 stuff         https://github.com/Gericom/EveryFileExplorer/tree/master/MarioKart/MK64
+Some shared F3D commands       http://wiki.spinout182.com/w/F3DEX2
+Official F3DEX documentation   http://level42.ca/projects/ultra64/Documentation/man/pro-man/pro25/index25.1.html
+Zoinkity's mk dlist notes      http://pastebin.com/raw.php?i=QMfNHWA2
+romhacking.net wiki notes      http://datacrystal.romhacking.net/wiki/Mario_Kart_64:Notes
+tcrf wiki notes                https://tcrf.net/Notes:Mario_Kart_64
+Some ghost data stuff          https://github.com/SeanSullivan86/MK64
+Gericom's mk64 stuff           https://github.com/Gericom/EveryFileExplorer/tree/master/MarioKart/MK64
