@@ -4,10 +4,10 @@ for(var i in TypedArrays){
 	if(!TypedArrays[i].prototype.slice){
 		TypedArrays[i].prototype.slice = function(start, end){
 			var ret = new this.constructor(end - start);
-			var j = 0;
+			var matchTestPos = 0;
 			for(var i = start; i < end; i++){
-				ret[j] = this[i];
-				j++;
+				ret[matchTestPos] = this[i];
+				matchTestPos++;
 			}
 			return ret;
 		}
@@ -27,7 +27,7 @@ function SWAP32(i){
 		   ((i & 0x000000FF) <<   24)) >>> 0;
 }
 
-function unsign32(i){ // unsign js s32
+function unsign32(i){ // unsign matchTestPoss s32
 	return i >>> 0;
 }
 
@@ -102,6 +102,7 @@ function Uint8ToUint16ArrayBE(src){
 
 // mio0 decoder
 function mio0decode(/*Uint8Array*/ src, srcOffset){
+	srcOffset = srcOffset || 0;
 	var dest = [];
 	var destLen = getU32BE(src, srcOffset + 0x04);
 	var controlPos = 0x10; // control bits section
@@ -119,7 +120,8 @@ function mio0decode(/*Uint8Array*/ src, srcOffset){
 			var dictPair = getU16BE(src, srcOffset + dictPos);
 			var length = (dictPair >> 12) + 3; // upper 4 bits + 3 = length (match maxlength = 18, minlength = 3)
 			var relOffset = destPos - (dictPair & 0x0FFF) - 1; // index - lower 12 bits (relative negative offset of data to copy + 1)
-			for(var j = 0; j < length; j++){
+			//console.log("match: ", destPos.toString(16), relOffset.toString(16), length.toString(16))
+			for(var matchTestPos = 0; matchTestPos < length; matchTestPos++){
 				dest[destPos] = dest[relOffset];
 				relOffset++;
 				destPos++;
@@ -133,7 +135,88 @@ function mio0decode(/*Uint8Array*/ src, srcOffset){
 		controlBits <<= 1; // next bit
 		controlExaust--;
 	}
-	return dest;
+	return new Uint8Array(dest);
+}
+
+// mio0 encoder
+function mio0encode(input, inputLen){
+	// fast single-pass implementation requires multiple temporary output buffers for the sections:
+	var controlBits = []; // control bit section
+	var pairs = []; // dictionary pairs section
+	var data = []; // data section
+	
+	inputLen = inputLen || input.length;
+	
+	for(var i = 0; i < 3; i++){ // push first 3 bytes of data
+		data.push(input[i]); // byte
+		controlBits.push(1); // 'no pair' flag
+	}
+	
+	for(var i = 3; i < inputLen;){ // pos of data
+		var bestMatchPos = 0;
+		var bestMatchLen = 1;
+		var matchTestPos = (i >= 4096) ? (i - 4096) : 0;
+		
+		for(;matchTestPos < i; matchTestPos++){ // start pos of match test
+			for(testOffset = 0; testOffset < 18; testOffset++){
+				if(input[i+testOffset] != input[matchTestPos+testOffset]) break;
+				if(testOffset >= bestMatchLen){
+					bestMatchLen++;
+					bestMatchPos = matchTestPos;
+				}
+			}
+		}
+		// byte repetition optimization
+		var repeatLen = 0;
+		for(var j = 0; j < 18; j++){
+			if(input[i+j] != input[i]) break;
+			repeatLen++;
+		}
+		if(repeatLen > bestMatchLen && bestMatchLen >= 3){
+			//console.log("repeat length is better", i.toString(16), bestMatchLen, repeatLen);
+			data.push(input[i]);
+			controlBits.push(1);
+			i++;
+			bestMatchPos = i - 1;
+			bestMatchLen = repeatLen - 1;
+		}
+		
+		if(bestMatchLen >= 3){ // good match was found, add length-offset pair
+			//console.log("match: ", i.toString(16), bestMatchPos.toString(16), bestMatchLen.toString(16))
+			var pair = ((bestMatchLen - 3) << 12) | (i - bestMatchPos - 1);
+			pairs.push(pair >> 8, pair & 0xFF);
+			controlBits.push(0); // 'use pair' flag
+			i += bestMatchLen;
+		} else { // no good match, single byte copy
+			controlBits.push(1); // 'no pair'
+			data.push(input[i]); // data byte
+			i++;
+		}
+	}
+	
+	var controlBytes = []; // convert control bit array to bytes
+	for(var i = 0; i < controlBits.length; i++){
+		controlBytes[(i/8)|0] |= controlBits[i] << (7-(i%8));
+	}
+	
+	var controlBytesLen = (controlBytes.length + 1) & 0xFFFFFFFE; // align length to 16 bits for proper cpu reading of the pairs section
+	
+	var pairsOffset = 0x10 + controlBytesLen;
+	var dataOffset = pairsOffset + pairs.length;
+	
+	var blockLen = 0x10 + controlBytesLen + pairs.length + data.length;
+	
+	var ab = new ArrayBuffer(blockLen);
+	var dv = new DataView(ab);
+	dv.setUint32(0x00, 0x4D494F30);   // "MIO0" signature
+	dv.setUint32(0x04, input.length); // decoded size
+	dv.setUint32(0x08, pairsOffset); // pairs offset
+	dv.setUint32(0x0C, dataOffset);  // data offset
+	for(var i = 0; i < controlBytesLen; i++) dv.setUint8(0x10 + i, controlBytes[i]);
+	for(var i = 0; i < pairs.length;    i++) dv.setUint8(pairsOffset + i, pairs[i]);
+	for(var i = 0; i < data.length;     i++) dv.setUint8(dataOffset + i, data[i]);
+	
+	return new Uint8Array(ab);
 }
 
 // array swap conversions:
@@ -154,7 +237,7 @@ function Int16ArrayBE(arg){ // LE s16 array -> BE s16 array
 }
 
 // filereader instance and result event for file inputs
-function BinInput(/*id or dom object*/ fileElement, callback){
+function BinInput(/*id or dom obmatchTestPosect*/ fileElement, callback){
 	if(typeof(fileElement) == "string"){
 		fileElement = document.getElementById(fileElement);
 	}
