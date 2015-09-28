@@ -178,8 +178,9 @@
 			
 			// renderer settings
 			var cfg = {
-				WIREFRAME: true,
+				WIREFRAME: false,
 				BGCOLOR  : 0x000000,
+				ENABLECLAMP: false
 			}
 			
 			// mk64-proprietary display list test rendering
@@ -191,60 +192,257 @@
 			var dl_tex;
 			var dl_img; // slice raw image data here
 			var dl_tcache = {}; // offset in texture segment => threejs texture object
+			var dl_material = new THREE.MeshFaceMaterial();
+			var dl_materialIndex = -1;
+			
+			var dl_scales;
+			var dl_scalet;
+			
+			var dl_texcmt;
+			var dl_texcms;
+			var dl_texshifts;
+			var dl_texshiftt;
+			
 			var dl_cmds = {
 				0x15: [1, function(){}], // cc
 				0x16: [1, function(){}], // cc
 				0x17: [1, function(){}], // cc
 				0x18: [1, function(){}], // setothermode_low
 				0x19: [1, function(){}], // setothermode_low
-				0x1A: [3, function(){}], // img32x32_5551
-				0x1B: [3, function(){}], // img32x64_5551
-				0x1C: [3, function(){}], // img64x32_5551
-				0x1D: [3, function(){}], // ia16 32x32
-				0x1E: [3, function(){}], // ia16 32x64
-				0x1F: [3, function(){}], // ia16 64x32
+				0x1A: [3, function(){
+					var s_mask =  dl_data[dl_pos+1];
+					var s_flags = s_mask >> 4;
+					s_mask = s_mask & 0xF;
+					var t_mask = dl_data[dl_pos+2];
+					var t_flags = t_mask >> 4;
+					t_mask = t_mask & 0xF;
+					var line = (32<< 1) + 7;
+					line >>= 3;
+					var w = 32 - 1;
+					var h = 32 - 1;
+					
+					dl_settile2(t_mask, t_flags, s_mask, s_flags, h, w, line);
+					
+					//dl_settile(line << 9, tmem, 0, lrs, lrt);
+				}], // img32x32_5551
+				0x1B: [3, function(){
+					var s_mask =  dl_data[dl_pos+1];
+					var s_flags = s_mask >> 4;
+					s_mask  = s_mask & 0xF;
+					var t_mask = dl_data[dl_pos+2];
+					var t_flags = t_mask >> 4;
+					t_mask = t_mask &  0xF;
+					var line = (64<< 1) + 7;
+					 line >>= 3;
+					var w = 32 - 1;
+					var h = 64 - 1;
+					
+					dl_settile2(t_mask, t_flags, s_mask, s_flags, h, w, line);
+				}], // img32x64_5551
+				0x1C: [3, function(){
+					var s_mask =  dl_data[dl_pos+1];
+					var s_flags = s_mask >> 4;
+					s_mask = s_mask & 0xF;
+					var t_mask = dl_data[dl_pos+2];
+					var t_flags = t_mask >> 4;
+					t_mask = t_mask & 0xF;
+					var line = (32<< 1) + 7;
+					line >>= 3;
+					var w = 64 - 1;
+					var h = 32 - 1;
+					
+					dl_settile2(t_mask, t_flags, s_mask, s_flags, h, w, line);
+				}], // img64x32_5551
+				0x1D: [3, function(){
+					var s_mask =  dl_data[dl_pos+1];
+					var s_flags = s_mask >> 4;
+					s_mask = s_mask & 0xF;
+					var t_mask = dl_data[dl_pos+2];
+					var t_flags = t_mask >> 4;
+					t_mask = t_mask & 0xF;
+					var line = (32<< 1) + 7;
+					 line >>= 3;
+					var w = 32 - 1;
+					var h = 32 - 1;
+					
+					dl_settile2(t_mask, t_flags, s_mask, s_flags, h, w, line);
+				}], // ia16 32x32
+				0x1E: [3, function(){
+					var s_mask =  dl_data[dl_pos+1];
+					var s_flags = s_mask >> 4;
+					s_mask = s_mask & 0xF;
+					var t_mask = dl_data[dl_pos+2];
+					var t_flags = t_mask >> 4;
+					t_mask  = t_mask & 0xF;
+					var line = (64<< 1) + 7;
+					line >>= 3;
+					var w = 32 - 1;
+					var h = 64 - 1;
+					
+					dl_settile2(t_mask, t_flags, s_mask, s_flags, h, w, line);
+				}], // ia16 32x64
+				0x1F: [3, function(){
+					var s_mask =  dl_data[dl_pos+1];
+					var s_flags = s_mask >> 4;
+					s_mask = s_mask & 0xF;
+					var t_mask = dl_data[dl_pos+2];
+					var t_flags = t_mask >> 4;
+					t_mask = t_mask & 0xF;
+					var line = (32<< 1) + 7;
+					line >>= 3;
+					var w = 64 - 1;
+					var h = 32 - 1;
+					
+					dl_settile2(t_mask, t_flags, s_mask, s_flags, h, w, line);
+				}], // ia16 64x32
 				0x20: [4, function(){ // img_load
-					console.log("img_load32x32");
+					//console.log("img_load32x32");
+					console.log("0x20 ", dl_data[dl_pos], " ", dl_data[dl_pos+1], " ", dl_data[dl_pos+2], " ", dl_data[dl_pos+3]);
 					var offset = ((dl_data[dl_pos+2]<<8)|dl_data[dl_pos+1]) * 0x400;
 					dl_tload(offset, 32, 32);
+					
+					var tile = dl_data[dl_pos+3];
+					var tmem = tile & 0xF;
+					tile >>= 4;
+					var lrs = Math.min((32 - 32) - 1, 0x7FF);
+					var lrt = Math.max((32 << 1) >> 3, 1);
+					lrt = (0x7FF + lrt);
+					
+					dl_settile(tile, tmem, 0, lrs, lrt);
 				}],
-				0x21: [4, function(){ // img_load
+				0x22: [4, function(){ // img_load
+					console.log("0x22 ", dl_data[dl_pos], " ", dl_data[dl_pos+1], " ", dl_data[dl_pos+2], " ", dl_data[dl_pos+3]);
 					//console.log("img_load32x64");
 					var offset = ((dl_data[dl_pos+2]<<8)|dl_data[dl_pos+1]) * 0x400;
 					dl_tload(offset, 32, 64);
+					
+					var tile = dl_data[dl_pos+3];
+					var tmem = tile & 0xF;
+					tile >>= 4;
+					var lrs = Math.min((32 - 64) - 1, 0x7FF);
+					var lrt = Math.max((64 << 1) >> 3, 1);
+					lrt = (0x7FF + lrt);
+					
+					dl_settile(tile, tmem, 0, lrs, lrt);
 				}],
-				0x22: [4, function(){ // img_load
+				0x21: [4, function(){ // img_load
 					//console.log("img_load64x32");
+					console.log("0x21 ", dl_data[dl_pos], " ", dl_data[dl_pos+1], " ", dl_data[dl_pos+2], " ", dl_data[dl_pos+3]);
 					var offset = ((dl_data[dl_pos+2]<<8)|dl_data[dl_pos+1]) * 0x400;
 					dl_tload(offset, 64, 32);
+					
+					var tile = dl_data[dl_pos+3];
+					var tmem = tile & 0xF;
+					tile >>= 4;
+					var lrs = Math.min((64 - 32) - 1, 0x7FF);
+					var lrt = Math.max((32 << 1) >> 3, 1);
+					lrt = (0x7FF + lrt);
+					
+					dl_settile(tile, tmem, 0, lrs, lrt);
 				}],
 				0x23: [4, function(){ // img_load ia16 32 32
 					//console.log("img_load64x32");
 					var offset = ((dl_data[dl_pos+2]<<8)|dl_data[dl_pos+1]) * 0x400;
-					dl_tex = SEG05_TEX.slice(offset, offset + 0x400);
+					dl_tload(offset, 64, 32);
+					//dl_tex = SEG05_TEX.slice(offset, offset + 0x800);
+					
+					var tile = dl_data[dl_pos+3];
+					var tmem = tile & 0xF;
+					tile >>= 4;
+					var lrs = Math.min((32 - 32) - 1, 0x7FF);
+					var lrt = Math.max((32 << 1) >> 3, 1);
+					lrt = (0x7FF + lrt);
+					
+					dl_settile(tile, tmem, 3, lrs, lrt);
 					//console.log(getU32BE(dl_data, dl_pos).toString(16));
 				}],
 				0x24: [4, function(){ // img_load
 					//console.log("img_load32x64 ia16");
 					var offset = ((dl_data[dl_pos+2]<<8)|dl_data[dl_pos+1]) * 0x400;
-					dl_tex = SEG05_TEX.slice(offset, offset + 0x400);
+					dl_tload(offset, 32, 64);
+					//dl_tex = SEG05_TEX.slice(offset, offset + 0x800);
+					
+					var tile = dl_data[dl_pos+3];
+					var tmem = tile & 0xF;
+					tile >>= 4;
+					var lrs = Math.min((32 - 64) - 1, 0x7FF);
+					var lrt = Math.max((64 << 1) >> 3, 1);
+					lrt = (0x7FF + lrt);
+					
+					dl_settile(tile, tmem, 3, lrs, lrt);
+					//console.log(getU32BE(dl_data, dl_pos).toString(16));
+				}],
+				0x25: [4, function(){ // img_load
+					//console.log("img_load64x64 ia16");
+					var offset = ((dl_data[dl_pos+2]<<8)|dl_data[dl_pos+1]) * 0x400;
+					dl_tload(offset, 64, 32);
+					//dl_tex = SEG05_TEX.slice(offset, offset + 0x1000);
+					
+					var tile = dl_data[dl_pos+3];
+					var tmem = tile & 0xF;
+					tile >>= 4;
+					var lrs = Math.min((64 - 32) - 1, 0x7FF);
+					var lrt = Math.max((32 << 1) >> 3, 1);
+					lrt = (0x7FF + lrt);
+					
+					dl_settile(tile, tmem, 3, lrs, lrt);
 					//console.log(getU32BE(dl_data, dl_pos).toString(16));
 				}],
 				0x26: [1, function(){ // img_scale
 					//console.log("img_scale1");
+					dl_scales = 1;
+					dl_scalet = -1;
 				}],
 				0x27: [1, function(){ // img_scale
 					//console.log("img_scale0");
+					dl_scales = -1;
+					dl_scalet = 1;
 				}],
 				0x28: [5, function(){}], // load x vertices
 				0x29: [3, function(){ // tri1
+					if(!dl_tex)
+						return;
 					//console.log("tri1");
 					var hi16 = getU16BE(dl_data, dl_pos + 1);
 					t0 = [];
-					t0[0] = ((hi16 & 0x1800) >> 7) | ((hi16 & 0x0700) >> 7);
-					t0[1] = ((hi16 & 0x0003) << 4) | ((hi16 & 0xE000) >> 12);
-					t0[2] = ((hi16 & 0x0060) >> 1) | ((hi16 & 0x001C) >> 1);
-					dl_vbuf.faces.push(new THREE.Face3(t0[0]/2, t0[1]/2, t0[2]/2));
+					t0[0] = (((hi16 & 0x1800) >> 7) | ((hi16 & 0x0700) >>  7)) / 2;
+					t0[1] = (((hi16 & 0x0003) << 4) | ((hi16 & 0xE000) >> 12)) / 2;
+					t0[2] = (((hi16 & 0x0060) >> 1) | ((hi16 & 0x001C) >>  1)) / 2;
+					
+					var ShiftScaleS = 1.0;
+					var ShiftScaleT = 1.0;
+
+					if(dl_texshifts > 10) {
+						ShiftScaleS = (1 << (16 - dl_texshifts));
+					} else if(dl_texshifts > 0) {
+						ShiftScaleS /= (1 << dl_texshifts);
+					}
+
+					if(dl_texshiftt > 10) {
+						ShiftScaleT = (1 << (16 - dl_texshiftt));
+					} else if(dl_texshiftt > 0) {
+						ShiftScaleT /= (1 << dl_texshiftt);
+					}
+					
+					
+					
+					
+					
+					dl_vbuf.faces.push(new THREE.Face3(t0[0], t0[1], t0[2]));
+					var u1 = dl_uvbuf[t0[0]][0] * 0.5 * dl_scales * ShiftScaleS / 32 / dl_tex.image.width;
+					var u2 = dl_uvbuf[t0[1]][0] * 0.5 * dl_scales * ShiftScaleS / 32 / dl_tex.image.width;
+					var u3 = dl_uvbuf[t0[2]][0] * 0.5 * dl_scales * ShiftScaleS / 32 / dl_tex.image.width;
+					var v1 = dl_uvbuf[t0[0]][1] * 1 * dl_scalet * ShiftScaleT / 32 / dl_tex.image.height;
+					var v2 = dl_uvbuf[t0[1]][1] * 1 * dl_scalet * ShiftScaleT / 32 / dl_tex.image.height;
+					var v3 = dl_uvbuf[t0[2]][1] * 1 * dl_scalet * ShiftScaleT / 32 / dl_tex.image.height;
+					dl_vbuf.faceVertexUvs[0].push([
+						new THREE.Vector2(u1,v1),
+						new THREE.Vector2(u2,v2),
+						new THREE.Vector2(u3,v3)
+					]);
+					dl_vbuf.faces[dl_vbuf.faces.length-1].materialIndex = dl_materialIndex;
+					
+					
 				}],
 				0x2A: [1, function(){}], // end
 				0x2B: [3, function(){}], // jump
@@ -262,6 +460,8 @@
 				0x56: [1, function(){}], // setgeomode, cull back
 				0x57: [1, function(){}], // cleargeomode cull back
 				0x58: [5, function(){ // draw_tri2
+					if(!dl_tex)
+						return;
 					var hi16 = getU16BE(dl_data, dl_pos + 1);
 					var lo16 = getU16BE(dl_data, dl_pos + 3);
 					var t0 = [], t1 = [];
@@ -271,28 +471,75 @@
 					t1[0] = (((lo16 & 0x1800) >> 7) | ((lo16 & 0x0700) >>  7)) / 2;
 					t1[1] = (((lo16 & 0x0003) << 4) | ((lo16 & 0xE000) >> 12)) / 2;
 					t1[2] = (((lo16 & 0x0060) >> 1) | ((lo16 & 0x001C) >>  1)) / 2;
+					
+					var ShiftScaleS = 1.0;
+					var ShiftScaleT = 1.0;
+
+					if(dl_texshifts > 10) {
+						ShiftScaleS = (1 << (16 - dl_texshifts));
+					} else if(dl_texshifts > 0) {
+						ShiftScaleS /= (1 << dl_texshifts);
+					}
+
+					if(dl_texshiftt > 10) {
+						ShiftScaleT = (1 << (16 - dl_texshiftt));
+					} else if(dl_texshiftt > 0) {
+						ShiftScaleT /= (1 << dl_texshiftt);
+					}
+					
+					
 					dl_vbuf.faces.push(new THREE.Face3(t0[0], t0[1], t0[2]));
+					var u1 = dl_uvbuf[t0[0]][0] * 0.5 * dl_scales * ShiftScaleS / 32 / dl_tex.image.width;
+					var u2 = dl_uvbuf[t0[1]][0] * 0.5 * dl_scales * ShiftScaleS / 32 / dl_tex.image.width;
+					var u3 = dl_uvbuf[t0[2]][0] * 0.5 * dl_scales * ShiftScaleS / 32 / dl_tex.image.width;
+					var v1 = dl_uvbuf[t0[0]][1] * 1 * dl_scalet * ShiftScaleT / 32 / dl_tex.image.height;
+					var v2 = dl_uvbuf[t0[1]][1] * 1 * dl_scalet * ShiftScaleT / 32 / dl_tex.image.height;
+					var v3 = dl_uvbuf[t0[2]][1] * 1 * dl_scalet * ShiftScaleT / 32 / dl_tex.image.height;
 					dl_vbuf.faceVertexUvs[0].push([
-						new THREE.Vector2(0, 1),
-						new THREE.Vector2(0, 0),
-						new THREE.Vector2(1, 0)
+						new THREE.Vector2(u1,v1),
+						new THREE.Vector2(u2,v2),
+						new THREE.Vector2(u3,v3)
 					]);
+					dl_vbuf.faces[dl_vbuf.faces.length-1].materialIndex = dl_materialIndex;
+					
+					//0.15258789
+					
+					//dl_vbuf.faceVertexUvs[0].push([
+					//	new THREE.Vector2(dl_uvbuf[t0[0]][0] / 12288.0,dl_uvbuf[t0[0]][1] / 12288.0),
+					//	new THREE.Vector2(dl_uvbuf[t0[1]][0] / 12288.0,dl_uvbuf[t0[1]][1] / 12288.0),
+					//	new THREE.Vector2(dl_uvbuf[t0[2]][0] / 12288.0,dl_uvbuf[t0[2]][1] / 12288.0)
+					//]);
 					dl_vbuf.faces.push(new THREE.Face3(t1[0], t1[1], t1[2]));
+					u1 = dl_uvbuf[t1[0]][0] * 0.5 * dl_scales * ShiftScaleS / 32 / dl_tex.image.width;
+					u2 = dl_uvbuf[t1[1]][0] * 0.5 * dl_scales * ShiftScaleS / 32 / dl_tex.image.width;
+					u3 = dl_uvbuf[t1[2]][0] * 0.5 * dl_scales * ShiftScaleS / 32 / dl_tex.image.width;
+					v1 = dl_uvbuf[t1[0]][1] * 1 * dl_scalet * ShiftScaleT / 32 / dl_tex.image.height;
+					v2 = dl_uvbuf[t1[1]][1] * 1 * dl_scalet * ShiftScaleT / 32 / dl_tex.image.height;
+					v3 = dl_uvbuf[t1[2]][1] * 1 * dl_scalet * ShiftScaleT / 32 / dl_tex.image.height;
 					dl_vbuf.faceVertexUvs[0].push([
-						new THREE.Vector2(0, 1),
-						new THREE.Vector2(0, 0),
-						new THREE.Vector2(1, 0)
+						new THREE.Vector2(u1,v1),
+						new THREE.Vector2(u2,v2),
+						new THREE.Vector2(u3,v3)
 					]);
+					
+					dl_vbuf.faces[dl_vbuf.faces.length-1].materialIndex = dl_materialIndex;
+					//dl_vbuf.faceVertexUvs[0].push([
+					//	new THREE.Vector2(dl_uvbuf[t1[0]][0] / 12288.0,dl_uvbuf[t1[0]][1] / 12288.0),
+					//	new THREE.Vector2(dl_uvbuf[t1[1]][0] / 12288.0,dl_uvbuf[t1[1]][1] / 12288.0),
+					//	new THREE.Vector2(dl_uvbuf[t1[2]][0] / 12288.0,dl_uvbuf[t1[2]][1] / 12288.0)
+					//]);
 					//todo push uvs to dl_uvbuf here
 				}],
 			};
 			
 			// draw and clear vertex buffer, load vcount vertices from seg04 given offset s4pos
 			function dl_vload(s4pos, vcount){
-				var material = new THREE.MeshBasicMaterial({map: dl_tex, wireframe: cfg.WIREFRAME});
-				addmesh(new THREE.Mesh(dl_vbuf, material));
+				addmesh(new THREE.Mesh(dl_vbuf, dl_material));
 				dl_vbuf = new THREE.Geometry();
 				dl_uvbuf = [];
+				dl_material = new THREE.MeshFaceMaterial();
+				dl_material.materials.push(new THREE.MeshBasicMaterial({map: dl_tex, side: THREE.DoubleSide, alphaTest: 0.5, wireframe: cfg.WIREFRAME, transparent: true}));
+				dl_materialIndex = 0;
 				for(var i = 0; i < vcount; i++){
 					dl_vbuf.vertices.push(new THREE.Vector3(SEG04_VERTS[s4pos+i*7], SEG04_VERTS[s4pos+i*7+1], SEG04_VERTS[s4pos+i*7+2]));
 					// save UV coordinates:
@@ -302,17 +549,86 @@
 			function dl_tload(offset, width, height){
 				if(offset in dl_tcache){ // use cached texture object
 					dl_tex = dl_tcache[offset];
+					
+					var found = false;
+					//Set it in the materials list
+					for(var i = 0; i < dl_material.materials.length; i++)
+					{
+						if(dl_tex == dl_material.materials[i].map)
+						{
+							found = true;
+							dl_materialIndex = i;
+							break;
+						}
+					}
+					if(!found)
+					{
+						dl_material.materials.push(new THREE.MeshBasicMaterial({map: dl_tex, side: THREE.DoubleSide, alphaTest: 0.5,  wireframe: cfg.WIREFRAME, transparent: true}));
+						dl_materialIndex = dl_material.materials.length - 1;
+					}
 				} else { // create new threejs texture and cache it
 					var dl_img = SEG05_TEX.slice(offset, offset + (width * height));
 					//dl_tex = new THREE.DataTexture(SEG05_TEX.slice(0, 0x400), 32, 32, THREE.RGBAFormat, THREE.UnsignedShort5551Type); this wont fucking work
-					dl_tex = new THREE.ImageUtils.generateDataTexture(width, height, new THREE.Color(0x000000));
+					//dl_tex = new THREE.ImageUtils.generateDataTexture(width, height, new THREE.Color(0x000000));
+					
+					var hasTrans = false;
+					var imagedata = new Uint8Array(width * height * 4);
 					for(var i = 0; i < dl_img.length; i++){
-						dl_tex.image.data[i*3+0] = dl_img[i] >> 8;
-						dl_tex.image.data[i*3+1] = (dl_img[i] & 0x7C0) >> 3;
-						dl_tex.image.data[i*3+2] = (dl_img[i] & 0x3E) << 2;
+						imagedata[i*4+0] = dl_img[i] >> 8;
+						imagedata[i*4+1] = (dl_img[i] & 0x7C0) >> 3;
+						imagedata[i*4+2] = (dl_img[i] & 0x3E) << 2;
+						imagedata[i*4+3] = (dl_img[i] & 0x1) * 0xFF;
+						if((dl_img[i] & 0x1) == 0x0)
+							hasTrans = true;
 					}
+					dl_tex = new THREE.DataTexture(imagedata, width, height, THREE.RGBAFormat );
+					dl_tex.minFilter = THREE.LinearFilter;
+					dl_tex.magFilter = THREE.LinearFilter;
+					dl_tex.needsUpdate = true;
+					
 					dl_tcache[offset] = dl_tex;
+					if((dl_texcms & 0x2) != 0x0 && cfg.ENABLECLAMP)
+					{
+						dl_tex.wrapS = THREE.ClampToEdgeWrapping;
+					}
+					else if((dl_texcms & 0x1) != 0x0)
+					{
+						dl_tex.wrapS = THREE.MirroredRepeatWrapping;
+					}
+					else
+					{
+						dl_tex.wrapS = THREE.RepeatWrapping;
+					}
+					
+					if((dl_texcmt & 0x2) != 0x0 && cfg.ENABLECLAMP)
+					{
+						dl_tex.wrapT = THREE.ClampToEdgeWrapping;
+					}
+					else if((dl_texcmt & 0x1) != 0x0)
+					{
+						dl_tex.wrapT = THREE.MirroredRepeatWrapping;
+					}
+					else
+					{
+						dl_tex.wrapT = THREE.RepeatWrapping;
+					}
+					dl_material.materials.push(new THREE.MeshBasicMaterial({map: dl_tex, side: THREE.DoubleSide, alphaTest: 0.5, wireframe: cfg.WIREFRAME, transparent: true}));
+					dl_materialIndex = dl_material.materials.length - 1;
 				}
+			}
+			function dl_settile2(t_mask, t_flags, s_mask, s_flags, h, w, line)
+			{
+				//var tile = (t_mask << 0x12) | (t_flags << 0xE) | (s_mask << 8) | (s_flags << 4);
+				dl_texcms = s_mask;
+				dl_texcmt = t_mask;
+				
+				//BIG NOTE: t_flags and s_flags appear to be size markers
+				//           (either 0101 or 0110, which 2^x = 32 and 64)
+			}
+			function dl_settile(tile, tmem, format, lrs, lrt)
+			{
+				dl_texshiftt = tile >> 10 && 0xF;
+				dl_texshifts = tile >> 0 && 0xF;
 			}
 			function dl_reset(){
 				dl_data   = [];
@@ -324,6 +640,7 @@
 			}
 			function dl_exec(dl){
 				dl_data = dl;
+				dl_tex = undefined;
 				for(var i = 0; dl_data[dl_pos] != 0xFF; i++){
 					if(dl_data[dl_pos] > 0x33 && dl_data[dl_pos] < 0x53){ // all load vertex commands
 						var vcount = dl_data[dl_pos] - 0x32;
@@ -345,7 +662,7 @@
 			
 			// Mesh classes:
 			function ItemBoxMesh(){
-				t.needsUpdate = true;
+				//t.needsUpdate = true;
 				return new THREE.Mesh(
 					new THREE.BoxGeometry(10, 10, 10),
 					new THREE.MeshBasicMaterial({color: 0xFF0000, wireframe: true})
@@ -387,6 +704,7 @@
 				renderer.setPixelRatio(window.devicePixelRatio);
 				renderer.setSize(scenewidth, sceneheight);
 				renderer.enableScissorTest(true);
+				renderer.alpha = true;
 				renderer.domElement.style.width = "960px";
 				renderer.domElement.style.height = "640px";
 				renderer.domElement.style.border = "1px solid #444";
@@ -660,7 +978,7 @@
 					if(i in keyevents) keyevents[i]();
 				}
 				// render main view:
-				renderer.setClearColor(cfg.BGCOLOR, 1);
+				renderer.setClearColor(cfg.BGCOLOR, 0);
 				renderer.setViewport(0, 0, scenewidth, sceneheight);
 				renderer.setScissor(0, 0, scenewidth, sceneheight);
 				renderer.render(scene, camera);
