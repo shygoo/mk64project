@@ -151,7 +151,7 @@
 			var romdata;
 			BinInput("romfile", function(result){
 				romdata = new Uint8Array(result);
-				for(var i = 0; i < 16; i++){
+				for(var i = 0; i < MAPNAMES.length; i++){
 					var map = {
 						ASSETS_START : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x00), //--seg6; object placements, path data, some display lists
 						ASSETS_END   : getU32BE(romdata, MAPSTRUCTS + (i * 0x30) + 0x04), //_/
