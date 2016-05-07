@@ -1,7 +1,10 @@
 ################ Target Executable and Sources ###############
 
 TARGET := mk64extract
-SRC_FILES := mk64extract.c
+
+SRC_FILES := mio0decode.c \
+             mk64extract.c \
+             utils.c
 
 OBJ_DIR     = ./obj
 
