@@ -57,7 +57,7 @@
 			}
 
 			var MAPNAMES = [
-				"Mario Raceway      ", 
+				"Mario Raceway      ",
 				"Choco Mountain     ",
 				"Bowser's Castle    ",
 				"Banshee Boardwalk  ",
@@ -668,6 +668,13 @@
 					new THREE.MeshBasicMaterial({color: 0xFF0000, wireframe: true})
 				);
 			}
+			function CheckPointMesh(){
+				//t.needsUpdate = true;
+				return new THREE.Mesh(
+					new THREE.BoxGeometry(20, 20, 20),
+					new THREE.MeshBasicMaterial({color: 0xFFFF00, wireframe: true})
+				);
+			}
 			function PlantMesh(){
 				return new THREE.Mesh(
 					new THREE.BoxGeometry(15, 15, 15),
@@ -809,6 +816,7 @@
 					pathcolor_i = (pathcolor_i + 1) % 4;
 				});
 				
+				/*
 				// simple paths:
 				path_ucolors = [0x006600, 0x660000, 0x666600, 0x660066];
 				path_ucolor_i = 0;
@@ -828,6 +836,13 @@
 					material = new THREE.PointCloudMaterial({color: path_ucolors[path_ucolor_i], size: 10});
 					addmesh(new THREE.PointCloud(geometry, material), 0, 0, 0, "data", "path_u");
 					path_ucolor_i = (path_ucolor_i + 1) % 4;
+				});*/
+				
+				// checkpoint data?:
+				path_u.forEach(function(path_u_offset){ // item boxes
+					for(var i = path_u_offset/2; s16data[i] ^ LIST_END; i += 4){
+						addmesh(new CheckPointMesh(), s16data[i+0], s16data[i+1], s16data[i+2], "object", "Checkpoint");
+					}
 				});
 				
 				// objects:
